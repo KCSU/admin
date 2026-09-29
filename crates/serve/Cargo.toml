@@ -1,0 +1,11 @@
+[package]
+name = "serve"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+api = { path = "../api" }
+axum = "0.8.9"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net"] }
