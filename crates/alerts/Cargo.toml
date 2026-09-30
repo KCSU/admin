@@ -1,0 +1,13 @@
+[package]
+name = "alerts"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+google-cloud-gax = { version = "1.15", default-features = false }
+google-cloud-pubsub = "1.5"
+prost = "0.14"
+proto = { path = "../proto" }
+thiserror = "2"
