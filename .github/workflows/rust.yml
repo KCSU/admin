@@ -20,9 +20,6 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
 
-      # prost-build needs protoc
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
-
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - run: cargo fmt --all --check
