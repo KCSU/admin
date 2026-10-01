@@ -15,6 +15,7 @@ use axum::http::StatusCode;
 use axum::routing::post;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+use futures_util::future::join_all;
 use prost::Message as _;
 
 use crate::consumers::firestore::Firestore;
@@ -37,6 +38,13 @@ impl AlertHandler {
             Self::Firestore(store) => store.handle(alert).await,
         }
     }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::GoogleChat(_) => "GoogleChat",
+            Self::Firestore(_) => "Firestore",
+        }
+    }
 }
 
 /// Serve the pub/sub push endpoint at `port`.
@@ -52,10 +60,13 @@ pub async fn serve(handlers: Arc<[AlertHandler]>, port: &str) -> std::io::Result
 async fn receive(State(handlers): State<Arc<[AlertHandler]>>, body: Bytes) -> StatusCode {
     match read_push(&body) {
         Ok(alert) => {
-            for handler in handlers.iter() {
-                if let Err(err) = handler.handle(&alert).await {
+            // Run the handlers concurrently, and wait for all of them.
+            let results = join_all(handlers.iter().map(|handler| handler.handle(&alert))).await;
+            for (handler, result) in handlers.iter().zip(results) {
+                if let Err(err) = result {
                     eprintln!(
-                        "handling alert {}/{} failed: {}",
+                        "{} failed to handle alert {}/{}: {}",
+                        handler.name(),
                         alert.source,
                         alert.dedup_key,
                         common::report(&err)
