@@ -18,6 +18,7 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "common",
+ "google-cloud-auth",
  "google-cloud-gax",
  "google-cloud-pubsub",
  "prost",

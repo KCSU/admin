@@ -25,4 +25,23 @@ pub enum ConsumeError {
 
     #[error("alert {0} is empty")]
     Empty(&'static str),
+
+    #[error("posting alert to Google Chat failed")]
+    GoogleChat(#[source] reqwest::Error),
+
+    #[error("alert has an invalid timestamp")]
+    Timestamp(#[source] common::TimestampOutOfRange),
+
+    #[error("getting a Google access token failed")]
+    Credentials(#[source] google_cloud_auth::errors::CredentialsError),
+
+    #[error("persisting alert to Firestore failed")]
+    FirestoreRequest(#[source] reqwest::Error),
+
+    /// Generic Firestore error.
+    #[error("Firestore returned {status}: {body}")]
+    FirestoreStatus {
+        status: reqwest::StatusCode,
+        body: String,
+    },
 }

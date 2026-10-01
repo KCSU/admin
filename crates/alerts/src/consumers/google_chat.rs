@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use serde_json::json;
 
-use crate::Alert;
+use crate::{Alert, ConsumeError};
 
 /// Posts alerts to a Google Chat space.
 pub struct GoogleChat {
@@ -27,14 +27,15 @@ impl GoogleChat {
     }
 
     /// Posts `alert` to the space, formatted as a card.
-    pub async fn handle(&self, alert: &Alert) -> reqwest::Result<()> {
+    pub async fn handle(&self, alert: &Alert) -> Result<(), ConsumeError> {
         let body = chat_message(alert);
         self.http_client
             .post(&self.webhook)
             .json(&body)
             .send()
-            .await?
-            .error_for_status()?;
+            .await
+            .and_then(reqwest::Response::error_for_status)
+            .map_err(ConsumeError::GoogleChat)?;
         Ok(())
     }
 }

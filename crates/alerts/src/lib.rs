@@ -10,6 +10,7 @@ mod error;
 mod producer;
 
 pub mod consumers {
+    pub mod firestore;
     pub mod google_chat;
 }
 

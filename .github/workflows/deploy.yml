@@ -81,6 +81,7 @@ jobs:
           --command=/alerting
           --service-account="$ALERTING_SA"
           --set-secrets=CHAT_WEBHOOK_URL=chat-alerts-webhook:latest
+          --set-env-vars=GOOGLE_CLOUD_PROJECT="$PROJECT"
           --no-allow-unauthenticated
 
       - name: Deploy job lookup-sync

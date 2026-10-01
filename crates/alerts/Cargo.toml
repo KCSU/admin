@@ -8,6 +8,7 @@ publish.workspace = true
 axum = "0.8"
 base64 = "0.23.1"
 common = { path = "../common" }
+google-cloud-auth = { version = "1.17", default-features = false }
 google-cloud-gax = { version = "1.15", default-features = false }
 google-cloud-pubsub = "1.5"
 prost = "0.14"

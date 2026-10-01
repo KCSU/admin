@@ -2,8 +2,8 @@
 //!
 //! Each consumer is a variant of [`AlertHandler`].
 //!
-//! Delivery is at most once: every push is acknowledged, whether the handler
-//! succeeds, fails, or the message is malformed. Failures are logged, not
+//! Delivery is at most once: every push is acknowledged, whether the handlers
+//! succeed, fail, or the message is malformed. Failures are logged, not
 //! retried.
 
 use std::sync::Arc;
@@ -17,9 +17,9 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use prost::Message as _;
 
-use crate::{Alert, ConsumeError, empty_field};
-
+use crate::consumers::firestore::Firestore;
 use crate::consumers::google_chat::GoogleChat;
+use crate::{Alert, ConsumeError, empty_field};
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -27,17 +27,19 @@ pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
 /// To add a handler, add a variant in [`handle`](Self::handle).
 pub enum AlertHandler {
     GoogleChat(GoogleChat),
+    Firestore(Firestore),
 }
 
 impl AlertHandler {
-    pub async fn handle(&self, alert: &Alert) -> Result<(), BoxError> {
+    pub async fn handle(&self, alert: &Alert) -> Result<(), ConsumeError> {
         match self {
-            Self::GoogleChat(chat) => Ok(chat.handle(alert).await?),
+            Self::GoogleChat(chat) => chat.handle(alert).await,
+            Self::Firestore(store) => store.handle(alert).await,
         }
     }
 }
 
-/// Serve the pub/sub push endpoint at port $PORT.
+/// Serve the pub/sub push endpoint at `port`.
 /// Runs every handler on each alert.
 pub async fn serve(handlers: Arc<[AlertHandler]>, port: &str) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
@@ -56,7 +58,7 @@ async fn receive(State(handlers): State<Arc<[AlertHandler]>>, body: Bytes) -> St
                         "handling alert {}/{} failed: {}",
                         alert.source,
                         alert.dedup_key,
-                        common::report(&*err)
+                        common::report(&err)
                     );
                 }
             }
