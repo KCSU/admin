@@ -20,6 +20,7 @@ env:
   LOOKUP_SYNC_SA: lookup-sync@kcsu-admin.iam.gserviceaccount.com
   ALERTING_SA: alerting@kcsu-admin.iam.gserviceaccount.com
   PUBSUB_TOPIC: projects/kcsu-admin/topics/lookup-group-members
+  ALERTS_TOPIC: projects/kcsu-admin/topics/alerts
 
 jobs:
   lint:
@@ -89,5 +90,5 @@ jobs:
           --command=/lookup-sync
           --service-account="$LOOKUP_SYNC_SA"
           --set-secrets=CAMBRIDGE_UIS_API_KEY=lookup-client-id:latest,CAMBRIDGE_UIS_API_SECRET=lookup-client-secret:latest
-          --set-env-vars=PUBSUB_TOPIC="$PUBSUB_TOPIC"
+          --set-env-vars=PUBSUB_TOPIC="$PUBSUB_TOPIC",ALERTS_TOPIC="$ALERTS_TOPIC"
           --task-timeout=5m --max-retries=1
