@@ -7,6 +7,6 @@ COPY proto/ proto/
 RUN cargo build --release --locked
 
 FROM alpine:3
-COPY --from=build /app/target/release/serve /app/target/release/lookup-sync /
+COPY --from=build /app/target/release/serve /app/target/release/lookup-sync /app/target/release/alerting /
 USER nobody
 CMD ["/serve"]

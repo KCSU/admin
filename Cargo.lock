@@ -15,12 +15,18 @@ dependencies = [
 name = "alerts"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "base64 0.23.1",
  "common",
  "google-cloud-gax",
  "google-cloud-pubsub",
  "prost",
  "proto",
+ "reqwest",
+ "serde",
+ "serde_json",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -276,6 +282,9 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
+dependencies = [
+ "time",
+]
 
 [[package]]
 name = "core-foundation"

@@ -18,6 +18,7 @@ env:
   DEPLOY_SA: github-deploy@kcsu-admin.iam.gserviceaccount.com
   SERVE_SA: admin-serve@kcsu-admin.iam.gserviceaccount.com
   LOOKUP_SYNC_SA: lookup-sync@kcsu-admin.iam.gserviceaccount.com
+  ALERTING_SA: alerting@kcsu-admin.iam.gserviceaccount.com
   PUBSUB_TOPIC: projects/kcsu-admin/topics/lookup-group-members
 
 jobs:
@@ -62,6 +63,15 @@ jobs:
           gcloud run deploy admin
           --project="$PROJECT" --region="$REGION" --image="$IMAGE"
           --service-account="$SERVE_SA"
+          --no-allow-unauthenticated
+
+      - name: Deploy service alerting
+        run: >
+          gcloud run deploy alerting
+          --project="$PROJECT" --region="$REGION" --image="$IMAGE"
+          --command=/alerting
+          --service-account="$ALERTING_SA"
+          --set-secrets=CHAT_WEBHOOK_URL=chat-alerts-webhook:latest
           --no-allow-unauthenticated
 
       - name: Deploy job lookup-sync

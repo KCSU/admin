@@ -5,9 +5,19 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+axum = "0.8"
+base64 = "0.23.1"
 common = { path = "../common" }
 google-cloud-gax = { version = "1.15", default-features = false }
 google-cloud-pubsub = "1.5"
 prost = "0.14"
 proto = { path = "../proto" }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+
+[[bin]]
+name = "alerting"
+path = "src/main.rs"
