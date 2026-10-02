@@ -31,4 +31,20 @@ pub enum Error {
         #[source]
         source: google_cloud_pubsub::error::PublishError,
     },
+
+    /// Couldn't create the Firestore client, e.g. no Google credentials found.
+    #[error("Firestore client setup failed")]
+    StoreSetup(#[source] common::FirestoreError),
+
+    /// The snapshot's fetch time can't be written as a timestamp.
+    #[error("snapshot has an invalid timestamp")]
+    Timestamp(#[source] common::TimestampOutOfRange),
+
+    /// Firestore rejected or failed to store a snapshot.
+    #[error("storing snapshot for group {group_id} failed")]
+    Store {
+        group_id: String,
+        #[source]
+        source: common::FirestoreError,
+    },
 }

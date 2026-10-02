@@ -1,12 +1,13 @@
-//! Lookup API client and pub/sub publishing.
+//! Lookup API client, Firestore storage and pub/sub publishing.
 
 mod client;
 mod error;
 mod response;
+mod store;
 
 pub use error::Error;
 
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use google_cloud_pubsub::client::Publisher;
 use google_cloud_pubsub::model::Message;
@@ -22,9 +23,15 @@ const GROUP_IDS: &[&str] = &[
     "105776", // kings-sis-pg
 ];
 
-/// Fetch each group in `GROUP_IDS` from Lookup and publish it to `topic`.
+/// Fetch each group in `GROUP_IDS` from Lookup, store its snapshot in the
+/// Firestore database of `project`, and publish it to GCP pub/sub `topic`.
 /// `client_id` / `client_secret` are UIS API Gateway app credentials.
-pub async fn sync(client_id: &str, client_secret: &str, topic: &str) -> Result<(), Error> {
+pub async fn sync(
+    client_id: &str,
+    client_secret: &str,
+    topic: &str,
+    project: &str,
+) -> Result<(), Error> {
     let http_client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
@@ -35,22 +42,30 @@ pub async fn sync(client_id: &str, client_secret: &str, topic: &str) -> Result<(
         .build()
         .await
         .map_err(Error::PubSubSetup)?;
+    let firestore = common::Firestore::new(project).map_err(Error::StoreSetup)?;
 
-    for group_id in GROUP_IDS {
+    for &group_id in GROUP_IDS {
         // Fetch from Lookup
         let group = fetch_group(&http_client, &token, group_id).await?;
         let members = fetch_group_members(&http_client, &token, group_id).await?;
 
         let snapshot = GroupSnapshot {
-            id: (*group_id).to_owned(),
+            id: group_id.to_owned(),
             name: group.name,
             description: group.title,
-            fetched_at_unix: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("system clock is before 1970")
-                .as_secs() as i64,
+            fetched_at_unix: common::unix_now(),
             members,
         };
+
+        // Store in Firestore
+        let fields = store::fields(&snapshot).map_err(Error::Timestamp)?;
+        firestore
+            .set(store::FIRESTORE_COLLECTION_NAME, &snapshot.id, fields)
+            .await
+            .map_err(|source| Error::Store {
+                group_id: group_id.to_owned(),
+                source,
+            })?;
 
         // Publish to pub/sub
         let message = Message::new()
@@ -62,7 +77,7 @@ pub async fn sync(client_id: &str, client_secret: &str, topic: &str) -> Result<(
             .publish(message)
             .await
             .map_err(|source| Error::Publish {
-                group_id: (*group_id).to_owned(),
+                group_id: group_id.to_owned(),
                 source,
             })?;
     }

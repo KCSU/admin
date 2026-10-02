@@ -19,7 +19,6 @@ dependencies = [
  "base64 0.23.1",
  "common",
  "futures-util",
- "google-cloud-auth",
  "google-cloud-gax",
  "google-cloud-pubsub",
  "prost",
@@ -285,6 +284,9 @@ dependencies = [
 name = "common"
 version = "0.1.0"
 dependencies = [
+ "google-cloud-auth",
+ "reqwest",
+ "serde_json",
  "thiserror",
  "time",
 ]

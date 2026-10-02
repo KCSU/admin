@@ -25,6 +25,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let client_id = common::require_env("CAMBRIDGE_UIS_API_KEY")?;
     let client_secret = common::require_env("CAMBRIDGE_UIS_API_SECRET")?;
     let topic = common::require_env("PUBSUB_TOPIC")?;
-    lookup_sync::sync(&client_id, &client_secret, &topic).await?;
+    let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
+    lookup_sync::sync(&client_id, &client_secret, &topic, &project).await?;
     Ok(())
 }
