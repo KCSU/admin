@@ -8,13 +8,14 @@
 pub mod consumer;
 mod error;
 mod producer;
+pub mod retry;
 
 pub mod consumers {
     pub mod firestore;
     pub mod google_chat;
 }
 
-pub use consumer::AlertHandler;
+pub use consumer::{AlertHandler, Handler};
 pub use error::{ConsumeError, SendError};
 pub use producer::{AlertBuilder, AlertPublisher, to_message};
 pub use proto::alerts::v1::Alert;

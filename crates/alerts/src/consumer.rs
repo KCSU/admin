@@ -3,8 +3,8 @@
 //! Each consumer is a variant of [`AlertHandler`].
 //!
 //! Delivery is at most once: every push is acknowledged, whether the handlers
-//! succeed, fail, or the message is malformed. Failures are logged, not
-//! retried.
+//! succeed, fail, or the message is malformed. A handler retries transient
+//! failures itself; once it gives up, the failure is logged.
 
 use std::sync::Arc;
 
@@ -20,6 +20,7 @@ use prost::Message as _;
 
 use crate::consumers::firestore::Firestore;
 use crate::consumers::google_chat::GoogleChat;
+use crate::retry::Retry;
 use crate::{Alert, ConsumeError, empty_field};
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
@@ -47,9 +48,64 @@ impl AlertHandler {
     }
 }
 
+/// An [`AlertHandler`], with how it retries.
+pub struct Handler {
+    handler: AlertHandler,
+    retry: Retry,
+}
+
+impl Handler {
+    /// Handles every alert, trying each once.
+    pub fn new(handler: AlertHandler) -> Self {
+        Self {
+            handler,
+            retry: Retry::NEVER,
+        }
+    }
+
+    pub fn retry(mut self, retry: Retry) -> Self {
+        self.retry = retry;
+        self
+    }
+
+    /// Handles `alert`. A failure is logged.
+    async fn run(&self, alert: &Alert) {
+        if let Err(err) = self.handle_with_retries(alert).await {
+            eprintln!(
+                "{} failed to handle alert {}/{}: {}",
+                self.handler.name(),
+                alert.source,
+                alert.dedup_key,
+                common::report(&err)
+            );
+        }
+    }
+
+    async fn handle_with_retries(&self, alert: &Alert) -> Result<(), ConsumeError> {
+        let mut attempt = 1;
+        loop {
+            match self.handler.handle(alert).await {
+                Err(err) if err.is_transient() && attempt < self.retry.attempts => {
+                    let delay = self.retry.delay(attempt);
+                    eprintln!(
+                        "{} attempt {attempt} at alert {}/{} failed, retrying in {delay:?}: {}",
+                        self.handler.name(),
+                        alert.source,
+                        alert.dedup_key,
+                        common::report(&err)
+                    );
+                    tokio::time::sleep(delay).await;
+                    attempt += 1;
+                }
+                result => return result,
+            }
+        }
+    }
+}
+
 /// Serve the pub/sub push endpoint at `port`.
 /// Runs every handler on each alert.
-pub async fn serve(handlers: Arc<[AlertHandler]>, port: &str) -> std::io::Result<()> {
+pub async fn serve(handlers: Arc<[Handler]>, port: &str) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     let app = Router::new().route("/", post(receive)).with_state(handlers);
 
@@ -57,22 +113,11 @@ pub async fn serve(handlers: Arc<[AlertHandler]>, port: &str) -> std::io::Result
 }
 
 /// Handles one push request.
-async fn receive(State(handlers): State<Arc<[AlertHandler]>>, body: Bytes) -> StatusCode {
+async fn receive(State(handlers): State<Arc<[Handler]>>, body: Bytes) -> StatusCode {
     match read_push(&body) {
+        // Run the handlers concurrently, and wait for all of them.
         Ok(alert) => {
-            // Run the handlers concurrently, and wait for all of them.
-            let results = join_all(handlers.iter().map(|handler| handler.handle(&alert))).await;
-            for (handler, result) in handlers.iter().zip(results) {
-                if let Err(err) = result {
-                    eprintln!(
-                        "{} failed to handle alert {}/{}: {}",
-                        handler.name(),
-                        alert.source,
-                        alert.dedup_key,
-                        common::report(&err)
-                    );
-                }
-            }
+            join_all(handlers.iter().map(|handler| handler.run(&alert))).await;
         }
         Err(err) => eprintln!("dropping unreadable push request: {}", common::report(&err)),
     }

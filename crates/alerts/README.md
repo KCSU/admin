@@ -38,6 +38,6 @@ There are currently two alert handlers:
 | `GoogleChat` | Posts the alert to a Google Chat space as a formatted card.                        |
 | `Firestore`  | Stores the alert as a document in the `alerts` collection, with a TTL of 180 days. |
 
-Delivery to the handlers has at most once semantics.
+Delivery to the handlers has at most once semantics, but each handler can choose to retry internally.
 
-To add another handler, add a variant to `AlertHandler` in `src/consumer.rs`.
+To add another handler, add a variant to `AlertHandler` in `src/consumer.rs`, and update relevant code paths.

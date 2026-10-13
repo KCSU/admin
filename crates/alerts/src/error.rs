@@ -35,3 +35,23 @@ pub enum ConsumeError {
     #[error("persisting alert to Firestore failed")]
     Firestore(#[source] common::FirestoreError),
 }
+
+impl ConsumeError {
+    pub fn is_transient(&self) -> bool {
+        use common::FirestoreError;
+
+        match self {
+            Self::GoogleChat(err) => err.status().is_none_or(transient_status_code),
+            Self::Firestore(FirestoreError::Request(_) | FirestoreError::AccessToken(_)) => true,
+            Self::Firestore(FirestoreError::Status { status, .. }) => {
+                transient_status_code(*status)
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Rate limited, or a server error.
+fn transient_status_code(status: reqwest::StatusCode) -> bool {
+    status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
+}
