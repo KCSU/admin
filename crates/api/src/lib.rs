@@ -17,7 +17,7 @@ pub fn router(firestore: common::Firestore) -> Router {
 }
 
 async fn health() -> Json<Value> {
-    Json(json!({ "health": "ok" }))
+    Json(json!({ "status": "ok" }))
 }
 
 async fn not_found() -> (StatusCode, Json<Value>) {
