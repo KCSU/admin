@@ -50,7 +50,11 @@ name = "api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "common",
+ "serde",
  "serde_json",
+ "time",
+ "uptime",
 ]
 
 [[package]]

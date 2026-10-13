@@ -7,8 +7,8 @@ use time::Date;
 
 use crate::sites::Site;
 
-pub(crate) const COLLECTION: &str = "uptime";
-pub(crate) const DOCUMENT_ID: &str = "summary";
+pub const COLLECTION: &str = "uptime";
+pub const DOCUMENT_ID: &str = "summary";
 
 /// Days of history kept, including today.
 pub const HISTORY_DAYS: i64 = 90;

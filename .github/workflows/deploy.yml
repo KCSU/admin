@@ -73,6 +73,7 @@ jobs:
           gcloud run deploy admin
           --project="$PROJECT" --region="$REGION" --image="$IMAGE"
           --service-account="$SERVE_SA"
+          --set-env-vars=GOOGLE_CLOUD_PROJECT="$PROJECT"
           --no-allow-unauthenticated
 
       # Maximum one instance because of in-memory alert duplication
