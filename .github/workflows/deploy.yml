@@ -74,6 +74,7 @@ jobs:
           --service-account="$SERVE_SA"
           --no-allow-unauthenticated
 
+      # Maximum one instance because of in-memory alert duplication
       - name: Deploy service alerting
         run: >
           gcloud run deploy alerting
@@ -82,6 +83,7 @@ jobs:
           --service-account="$ALERTING_SA"
           --set-secrets=CHAT_WEBHOOK_URL=chat-alerts-webhook:latest
           --set-env-vars=GOOGLE_CLOUD_PROJECT="$PROJECT"
+          --max-instances=1
           --no-allow-unauthenticated
 
       - name: Deploy job lookup-sync

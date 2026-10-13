@@ -6,6 +6,7 @@
 //!   alerts from a push subscription and passes each one to every [`AlertHandler`].
 
 pub mod consumer;
+pub mod dedup;
 mod error;
 mod producer;
 pub mod retry;

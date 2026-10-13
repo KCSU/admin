@@ -1,12 +1,13 @@
 //! Harness for a container that consumes alerts from a push subscription.
 //!
-//! Each consumer is a variant of [`AlertHandler`].
+//! Each consumer is a variant of [`AlertHandler`] wrapped in a [`Handler`].
 //!
 //! Delivery is at most once: every push is acknowledged, whether the handlers
 //! succeed, fail, or the message is malformed. A handler retries transient
 //! failures itself; once it gives up, the failure is logged.
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use axum::Router;
 use axum::body::Bytes;
@@ -20,6 +21,7 @@ use prost::Message as _;
 
 use crate::consumers::firestore::Firestore;
 use crate::consumers::google_chat::GoogleChat;
+use crate::dedup::Dedup;
 use crate::retry::Retry;
 use crate::{Alert, ConsumeError, empty_field};
 
@@ -48,9 +50,10 @@ impl AlertHandler {
     }
 }
 
-/// An [`AlertHandler`], with how it retries.
+/// An [`AlertHandler`], with whether it drops repeats and how it retries.
 pub struct Handler {
     handler: AlertHandler,
+    dedup: Option<Dedup>,
     retry: Retry,
 }
 
@@ -59,25 +62,48 @@ impl Handler {
     pub fn new(handler: AlertHandler) -> Self {
         Self {
             handler,
+            dedup: None,
             retry: Retry::NEVER,
         }
     }
 
+    /// Sets the `dedup` field.
+    pub fn dedup(mut self, window: Duration) -> Self {
+        self.dedup = Some(Dedup::new(window));
+        self
+    }
+
+    /// Sets the `retry` field.
     pub fn retry(mut self, retry: Retry) -> Self {
         self.retry = retry;
         self
     }
 
-    /// Handles `alert`. A failure is logged.
+    /// Handle `alert`. Do nothing if dedup is enabled and alert is a repeat. A failure is logged.
     async fn run(&self, alert: &Alert) {
+        let name = self.handler.name();
+        let marked_at = Instant::now();
+        if let Some(dedup) = &self.dedup
+            && !dedup.try_mark_sent(alert, marked_at)
+        {
+            eprintln!(
+                "{name} dropped repeat of alert {}/{}",
+                alert.source, alert.dedup_key
+            );
+            return;
+        }
+
         if let Err(err) = self.handle_with_retries(alert).await {
             eprintln!(
-                "{} failed to handle alert {}/{}: {}",
-                self.handler.name(),
+                "{name} failed to handle alert {}/{}: {}",
                 alert.source,
                 alert.dedup_key,
                 common::report(&err)
             );
+
+            if let Some(dedup) = &self.dedup {
+                dedup.unmark_sent(alert, marked_at);
+            }
         }
     }
 

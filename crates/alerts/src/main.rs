@@ -15,10 +15,12 @@ async fn main() -> Result<(), BoxError> {
     let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
 
     let handlers = Arc::from(vec![
-        Handler::new(AlertHandler::GoogleChat(GoogleChat::new(webhook)?)).retry(Retry {
-            attempts: 5,
-            first_delay: Duration::from_secs(1),
-        }),
+        Handler::new(AlertHandler::GoogleChat(GoogleChat::new(webhook)?))
+            .dedup(Duration::from_secs(60 * 60)) // 1 hour
+            .retry(Retry {
+                attempts: 5,
+                first_delay: Duration::from_secs(1),
+            }),
         Handler::new(AlertHandler::Firestore(Firestore::new(&project)?)).retry(Retry {
             attempts: 3,
             first_delay: Duration::from_secs(1),
