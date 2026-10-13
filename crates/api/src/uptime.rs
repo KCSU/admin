@@ -15,6 +15,9 @@ use uptime::summary::{COLLECTION, Check, DOCUMENT_ID, Day, SiteStatus, Summary};
 /// The uptime job writes once a minute.
 const CACHE_CONTROL: &str = "public, max-age=30";
 
+/// The uptime API is public, therefore set Access-Control-Allow-Origin: *
+const ALLOW_ORIGIN: &str = "*";
+
 /// The status page's view of the summary.
 #[derive(Serialize)]
 struct Uptime<'a> {
@@ -56,14 +59,25 @@ pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Resp
                 "reading the uptime summary failed: {}",
                 common::report(&*err)
             );
-            return StatusCode::BAD_GATEWAY.into_response();
+            return (
+                StatusCode::BAD_GATEWAY,
+                [(header::ACCESS_CONTROL_ALLOW_ORIGIN, ALLOW_ORIGIN)],
+            )
+                .into_response();
         }
     };
     let body = Uptime {
         updated_at: summary.updated_at,
         sites: summary.sites.iter().map(Site::from).collect(),
     };
-    ([(header::CACHE_CONTROL, CACHE_CONTROL)], Json(body)).into_response()
+    (
+        [
+            (header::CACHE_CONTROL, CACHE_CONTROL),
+            (header::ACCESS_CONTROL_ALLOW_ORIGIN, ALLOW_ORIGIN),
+        ],
+        Json(body),
+    )
+        .into_response()
 }
 
 /// The stored summary in Firestore, matched to the current sites.
