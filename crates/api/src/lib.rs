@@ -1,5 +1,6 @@
 //! Axum routers for the admin API.
 
+mod exec;
 mod uptime;
 
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use serde_json::{Value, json};
 pub fn router(firestore: common::Firestore) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/exec", get(exec::get))
         .route("/uptime", get(uptime::get))
         .fallback(not_found)
         .with_state(Arc::new(firestore))
