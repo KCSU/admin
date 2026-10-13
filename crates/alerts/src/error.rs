@@ -43,8 +43,9 @@ impl ConsumeError {
         match self {
             Self::GoogleChat(err) => err.status().is_none_or(transient_status_code),
             Self::Firestore(FirestoreError::Request(_) | FirestoreError::AccessToken(_)) => true,
-            Self::Firestore(FirestoreError::Status { status, .. }) => {
-                transient_status_code(*status)
+            // ABORTED is contention with another write.
+            Self::Firestore(FirestoreError::Status { status, code, .. }) => {
+                transient_status_code(*status) || code.as_deref() == Some("ABORTED")
             }
             _ => false,
         }

@@ -8,6 +8,7 @@ Backend services and automations for KCSU.
 |---------------|------------------------------------------------------------------------------------------------------------------------|
 | `alerting`    | Receive alerts from GCP pub/sub, and dispatch it to downstream handlers. See [crates/alerts](crates/alerts/README.md). |
 | `lookup-sync` | Fetches group membership from the Cambridge UIS Lookup API on a regular basis.                                         |
+| `uptime`      | Checks KCSU's sites every minute and alerts when one is down. See [crates/uptime](crates/uptime/README.md).            |
 
 ## Getting started
 

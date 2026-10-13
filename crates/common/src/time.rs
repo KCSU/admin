@@ -25,6 +25,13 @@ pub fn fmt_unix_timestamp(unix: i64) -> String {
 #[error("unix timestamp {0} is out of range")]
 pub struct TimestampOutOfRange(i64);
 
+/// The UTC date of a unix timestamp.
+pub fn utc_date(unix: i64) -> Result<time::Date, TimestampOutOfRange> {
+    time::OffsetDateTime::from_unix_timestamp(unix)
+        .map(|at| at.date())
+        .map_err(|_| TimestampOutOfRange(unix))
+}
+
 /// Format a unix timestamp as RFC 3339, e.g. "2026-10-01T14:28:29Z".
 pub fn rfc3339(unix: i64) -> Result<String, TimestampOutOfRange> {
     time::OffsetDateTime::from_unix_timestamp(unix)
