@@ -12,6 +12,8 @@ use time::Date;
 use uptime::sites::SITES;
 use uptime::summary::{COLLECTION, Check, DOCUMENT_ID, Day, SiteStatus, Summary};
 
+use crate::notices::{self, Notice, Notices};
+
 /// The uptime job writes once a minute.
 const CACHE_CONTROL: &str = "public, max-age=30";
 
@@ -24,6 +26,8 @@ struct Uptime<'a> {
     /// When the uptime job last ran, in Unix seconds.
     updated_at: i64,
     sites: Vec<Site<'a>>,
+    /// Newest first.
+    notices: Vec<Notice>,
 }
 
 #[derive(Serialize)]
@@ -52,7 +56,15 @@ impl<'a> From<&'a SiteStatus> for Site<'a> {
 }
 
 pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Response {
-    let summary = match read(&firestore).await {
+    let (summary, notices) =
+        futures_util::future::join(read(&firestore), notices::read(&firestore)).await;
+
+    let notices = notices.unwrap_or_else(|err| {
+        eprintln!("reading notices failed: {}", common::report(&*err));
+        Notices::default()
+    });
+
+    let summary = match summary {
         Ok(summary) => summary,
         Err(err) => {
             eprintln!(
@@ -69,6 +81,7 @@ pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Resp
     let body = Uptime {
         updated_at: summary.updated_at,
         sites: summary.sites.iter().map(Site::from).collect(),
+        notices: notices.notices,
     };
     (
         [

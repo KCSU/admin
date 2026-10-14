@@ -1,6 +1,7 @@
 //! Axum routers for the admin API.
 
 mod exec;
+mod notices;
 mod uptime;
 
 use std::sync::Arc;
