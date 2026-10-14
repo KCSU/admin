@@ -33,7 +33,7 @@ pub const SITES: &[Site] = &[
         id: "library",
         name: "KCSU Library of Things",
         url: "https://library.kcsu.org.uk/",
-        health_path: "/healthz",
+        health_path: "/api/health",
     },
     Site {
         id: "kords",
