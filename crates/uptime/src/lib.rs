@@ -43,9 +43,16 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
         site.record(check);
     }
 
-    // Send an alert to the alerting service.
+    // Send an alert to the alerting service, except for sites expected to fail.
     let now = common::unix_now();
-    for site in summary.sites.iter_mut().filter(|site| site.alert_due(now)) {
+    let alerting = summary
+        .sites
+        .iter_mut()
+        .zip(SITES)
+        .filter(|(_, site)| !site.xfail)
+        .map(|(status, _)| status);
+
+    for site in alerting.filter(|site| site.alert_due(now)) {
         // Only mark as alerted once sent successfully.
         match send_alert(alerts, site).await {
             Ok(()) => site.record_alert(now),

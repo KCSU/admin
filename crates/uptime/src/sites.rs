@@ -9,6 +9,9 @@ pub struct Site {
     pub url: &'static str,
     /// Responds with `{"status": "ok"}` when healthy.
     pub health_path: &'static str,
+    /// Expected to fail, e.g. during a known, long-running problem.
+    /// Uptime is still measured but an outage raises no alerts.
+    pub xfail: bool,
 }
 
 impl Site {
@@ -28,23 +31,28 @@ pub const SITES: &[Site] = &[
         name: "KCSU Website",
         url: "https://www.kcsu.org.uk/",
         health_path: "/health",
+        xfail: false,
     },
     Site {
         id: "library",
         name: "KCSU Library of Things",
         url: "https://library.kcsu.org.uk/",
         health_path: "/api/health",
+        xfail: false,
     },
     Site {
         id: "kords",
         name: "KORDs v5 (King's Open Room Database)",
         url: "https://kords.kcsu.org.uk/",
         health_path: "/health",
+        // Remove once KORDs is moved off SRCF.
+        xfail: true,
     },
     Site {
         id: "store",
         name: "KiFoMaSy (KCSU Formal Ticket Store)",
         url: "https://store.kcsu.org.uk/",
         health_path: "/api/health",
+        xfail: false,
     },
 ];
