@@ -24,6 +24,10 @@ pub(crate) struct Notice {
     pub body: Option<String>,
     /// IDs of the uptime sites it affects, e.g. ["store"]. Can be empty.
     pub site_ids: Vec<String>,
+    /// Unix seconds. The status page hides the notice until then. None if it has no set start.
+    pub starts_at: Option<i64>,
+    /// Unix seconds. The status page hides the notice from then on. None if it has no set end.
+    pub ends_at: Option<i64>,
     /// Oldest first.
     pub updates: Vec<Update>,
 }
