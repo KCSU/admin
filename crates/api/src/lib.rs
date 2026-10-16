@@ -1,4 +1,4 @@
-//! Axum routers for the admin API.
+//! Axum routers for the public admin API.
 
 mod exec;
 mod notices;

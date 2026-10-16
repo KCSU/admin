@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
-    paths-ignore: [web/**, "**.md"]
+    paths-ignore: ["**.md"]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,7 @@ env:
   WIF_PROVIDER: projects/443929654886/locations/global/workloadIdentityPools/github/providers/kcsu-admin-repo
   DEPLOY_SA: github-deploy@kcsu-admin.iam.gserviceaccount.com
   SERVE_SA: admin-serve@kcsu-admin.iam.gserviceaccount.com
+  CONSOLE_SA: admin-console@kcsu-admin.iam.gserviceaccount.com
   LOOKUP_SYNC_SA: lookup-sync@kcsu-admin.iam.gserviceaccount.com
   ALERTING_SA: alerting@kcsu-admin.iam.gserviceaccount.com
   UPTIME_SA: uptime@kcsu-admin.iam.gserviceaccount.com
@@ -26,6 +27,9 @@ env:
 jobs:
   lint:
     uses: ./.github/workflows/rust.yml
+
+  web:
+    uses: ./.github/workflows/web.yml
 
   build:
     runs-on: ubuntu-latest
@@ -57,7 +61,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: [lint, build]
+    needs: [lint, web, build]
     runs-on: ubuntu-latest
     concurrency: deploy
     steps:
@@ -74,6 +78,14 @@ jobs:
           --project="$PROJECT" --region="$REGION" --image="$IMAGE"
           --service-account="$SERVE_SA"
           --set-env-vars=GOOGLE_CLOUD_PROJECT="$PROJECT"
+
+      - name: Deploy service admin-console
+        run: >
+          gcloud run deploy admin-console
+          --project="$PROJECT" --region="$REGION" --image="$IMAGE"
+          --command=/console
+          --service-account="$CONSOLE_SA"
+          --no-allow-unauthenticated
 
       # Maximum one instance because of in-memory alert duplication
       - name: Deploy service alerting

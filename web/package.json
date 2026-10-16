@@ -1,0 +1,24 @@
+{
+  "name": "admin-web",
+  "private": true,
+  "type": "module",
+  "description": "The KCSU admin console, at admin.kcsu.org.uk.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "packageManager": "pnpm@12.11.2",
+  "dependencies": {
+    "basecoat-css": "^1.0.2",
+    "preact": "^10.29.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@tailwindcss/vite": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

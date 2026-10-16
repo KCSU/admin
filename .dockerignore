@@ -1,3 +1,4 @@
 target
-web
+web/node_modules
+web/dist
 .git
