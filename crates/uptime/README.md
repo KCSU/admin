@@ -1,6 +1,6 @@
 # uptime
 
-A Cloud Run job, run every minute, that checks the health of KCSU's sites, stores the results for the status page, and raises an alert when an outage is detected.
+A Cloud Run job, run every 10 minutes, that checks the health of KCSU's sites, stores the results for the status page, and raises an alert when an outage is detected.
 
 ## Sites
 
