@@ -82,17 +82,4 @@ impl Summary {
             .collect();
         self
     }
-
-    /// Reads the document's fields, in Firestore's REST format.
-    pub fn from_fields(fields: &serde_json::Value) -> serde_json::Result<Self> {
-        serde_json::from_value(common::firestore::from_fields(fields))
-    }
-
-    /// The document's fields, in Firestore's REST format.
-    pub fn to_fields(&self) -> serde_json::Result<serde_json::Value> {
-        match serde_json::to_value(self)? {
-            serde_json::Value::Object(object) => Ok(common::firestore::to_fields(&object)),
-            _ => unreachable!("a struct serializes to an object"),
-        }
-    }
 }

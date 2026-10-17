@@ -1,25 +1,35 @@
 //! Serve the private admin console API.
 
+mod alerts;
 mod auth;
 
+use std::sync::Arc;
+
 use axum::extract::Request;
-use axum::http::{HeaderValue, header};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::Response;
-use axum::routing::get;
+use axum::routing::{any, get};
 use axum::{Extension, Json, Router, middleware};
-use tower_http::services::ServeDir;
+use serde_json::{Value, json};
+use tower_http::services::{ServeDir, ServeFile};
 
 use auth::{Auth, User};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = common::require_env("PORT")?;
+    let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
+    let firestore = Arc::new(common::Firestore::new(&project)?);
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
 
     let app = Router::new()
         .route("/api/me", get(me))
-        .fallback_service(ServeDir::new("web/dist"))
+        .route("/api/alerts", get(alerts::list))
+        .route("/api/{*rest}", any(api_not_found))
+        .nest_service("/assets", ServeDir::new("web/dist/assets"))
+        .with_state(firestore)
+        .fallback_service(ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html")))
         .layer(middleware::from_fn(cache_control))
         .layer(middleware::from_fn(auth::same_origin))
         .layer(middleware::from_fn_with_state(
@@ -37,6 +47,10 @@ fn auth_from_env() -> Auth {
         return Auth::Dev(User { email });
     }
     Auth::Iap
+}
+
+async fn api_not_found() -> (StatusCode, Json<Value>) {
+    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
 }
 
 async fn me(Extension(user): Extension<User>) -> Json<User> {

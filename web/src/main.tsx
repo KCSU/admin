@@ -1,7 +1,10 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
+import Layout from './components/Layout';
 import Logo from './components/Logo';
+import Alerts from './pages/Alerts';
+import { usePath } from './router';
 import './style.css';
 
 /** The signed-in user, from /api/me. */
@@ -9,12 +12,10 @@ interface User {
   email: string;
 }
 
-/** Clears IAP's sign-in cookie. */
-const SIGN_OUT_URL = '/?gcp-iap-mode=CLEAR_LOGIN_COOKIE';
-
 function App() {
   // undefined while loading, null if failed.
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const path = usePath();
 
   useEffect(() => {
     fetch('/api/me', { headers: { Accept: 'application/json' } })
@@ -27,22 +28,21 @@ function App() {
 
   if (user === undefined) return null;
 
-  return (
-    <main class="min-h-screen flex items-center justify-center p-6">
-      <div class="w-full max-w-sm flex flex-col items-center text-center gap-6">
-        <Logo class="h-12" />
-        {user ? (
-          <>
-            <h1 class="text-2xl font-semibold">Hello, {user.email}</h1>
-            <a class="btn" data-variant="outline" href={SIGN_OUT_URL}>
-              Sign out
-            </a>
-          </>
-        ) : (
+  if (user === null) {
+    return (
+      <main class="min-h-screen flex items-center justify-center p-6">
+        <div class="w-full max-w-sm flex flex-col items-center text-center gap-6">
+          <Logo class="h-12" />
           <p class="text-muted-foreground">The admin API can't be reached right now. Please try again later.</p>
-        )}
-      </div>
-    </main>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <Layout email={user.email} path={path}>
+      <Alerts />
+    </Layout>
   );
 }
 

@@ -28,7 +28,7 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
         .map_err(Error::Read)?;
     let (summary, precondition) = match &document {
         Some(document) => (
-            Summary::from_fields(&document.fields).map_err(Error::Decode)?,
+            document.decode().map_err(Error::Decode)?,
             Precondition::UpdatedAt(&document.update_time),
         ),
         None => (Summary::default(), Precondition::Missing),
@@ -65,7 +65,7 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
     }
 
     summary.updated_at = now;
-    let fields = summary.to_fields().map_err(Error::Encode)?;
+    let fields = common::firestore::to_fields(&summary).map_err(Error::Encode)?;
     match firestore
         .set_if(COLLECTION, DOCUMENT_ID, fields, precondition)
         .await

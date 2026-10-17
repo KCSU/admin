@@ -3,6 +3,8 @@
 use std::time::Duration;
 
 use google_cloud_auth::credentials::{AccessTokenCredentials, Builder};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
 #[derive(Debug, thiserror::Error)]
@@ -38,10 +40,19 @@ pub enum FirestoreError {
 
 /// A document read from Firestore.
 pub struct Document {
+    /// The document's ID within its collection.
+    pub id: String,
     /// The document's contents in Firestore's REST format. See [`from_fields`].
     pub fields: Value,
     /// When the document was last written, e.g. "2026-10-12T20:30:01.123456Z".
     pub update_time: String,
+}
+
+impl Document {
+    /// The document's fields as a `T`, e.g. a struct. See [`from_fields`].
+    pub fn decode<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
+        serde_json::from_value(from_fields(&self.fields))
+    }
 }
 
 /// What a document must look like for a write to go ahead.
@@ -82,7 +93,7 @@ impl Firestore {
     /// See <https://firebase.google.com/docs/firestore/use-rest-api> for more details.
     pub async fn add(&self, collection: &str, fields: Value) -> Result<(), FirestoreError> {
         let url = format!("{}/{collection}", self.documents_url);
-        self.send(self.http_client.post(url), fields).await
+        self.write(self.http_client.post(url), fields).await
     }
 
     /// Creates the document `collection/id` and populates it with `fields`, or replaces
@@ -96,8 +107,7 @@ impl Firestore {
         id: &str,
         fields: Value,
     ) -> Result<(), FirestoreError> {
-        let url = format!("{}/{collection}/{id}", self.documents_url);
-        self.send(self.http_client.patch(url), fields).await
+        self.patch(collection, id, fields, None).await
     }
 
     /// Like [`set`](Self::set), but only if the document meets `precondition`.
@@ -110,20 +120,7 @@ impl Firestore {
         fields: Value,
         precondition: Precondition<'_>,
     ) -> Result<(), FirestoreError> {
-        let (condition, value) = match precondition {
-            Precondition::Missing => ("currentDocument.exists", "false"),
-            Precondition::UpdatedAt(time) => ("currentDocument.updateTime", time),
-        };
-        let url = format!("{}/{collection}/{id}", self.documents_url);
-        let request = self.http_client.patch(url).query(&[(condition, value)]);
-        match self.send(request, fields).await {
-            Err(FirestoreError::Status {
-                code: Some(code), ..
-            }) if code == "FAILED_PRECONDITION" || code == "ALREADY_EXISTS" => {
-                Err(FirestoreError::Conflict)
-            }
-            result => result,
-        }
+        self.patch(collection, id, fields, Some(precondition)).await
     }
 
     /// Reads the document `collection/id`, or `None` if it doesn't exist.
@@ -132,34 +129,56 @@ impl Firestore {
         collection: &str,
         id: &str,
     ) -> Result<Option<Document>, FirestoreError> {
-        let url = format!("{}/{collection}/{id}", self.documents_url);
-        let response = self
-            .http_client
-            .get(url)
-            .bearer_auth(self.token().await?)
-            .send()
-            .await
-            .map_err(FirestoreError::Request)?;
-
+        let request = self.http_client.get(self.document_url(collection, id));
+        let response = self.send(request).await?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
         }
-        let response = check_status(response).await?;
+        let document: Value = check_status(response)
+            .await?
+            .json()
+            .await
+            .map_err(FirestoreError::Request)?;
+        document_from_rest(document).map(Some)
+    }
 
-        let mut document: Value = response.json().await.map_err(FirestoreError::Request)?;
-        let update_time = document["updateTime"]
-            .as_str()
-            .ok_or(FirestoreError::MissingUpdateTime)?
-            .to_owned();
-        // An empty document has no fields at all.
-        let fields = match document["fields"].take() {
-            Value::Null => json!({}),
-            fields => fields,
-        };
-        Ok(Some(Document {
-            fields,
-            update_time,
-        }))
+    /// Reads up to `limit` documents in `collection` whose timestamp field `field` is at or
+    /// after `since` (RFC 3339), newest first, in one request.
+    pub async fn recent(
+        &self,
+        collection: &str,
+        field: &str,
+        since: &str,
+        limit: u32,
+    ) -> Result<Vec<Document>, FirestoreError> {
+        let query = json!({ "structuredQuery": {
+            "from": [{ "collectionId": collection }],
+            "where": { "fieldFilter": {
+                "field": { "fieldPath": field },
+                "op": "GREATER_THAN_OR_EQUAL",
+                "value": { "timestampValue": since },
+            }},
+            "orderBy": [{ "field": { "fieldPath": field }, "direction": "DESCENDING" }],
+            "limit": limit,
+        }});
+        let request = self
+            .http_client
+            .post(format!("{}:runQuery", self.documents_url))
+            .json(&query);
+        let results: Vec<Value> = check_status(self.send(request).await?)
+            .await?
+            .json()
+            .await
+            .map_err(FirestoreError::Request)?;
+
+        // An empty result is a single entry with only a `readTime`, and no `document`.
+        results
+            .into_iter()
+            .filter_map(|mut result| match result["document"].take() {
+                Value::Null => None,
+                document => Some(document_from_rest(document)),
+            })
+            .collect()
     }
 
     /// A short-lived Google OAuth2 access token.
@@ -172,20 +191,83 @@ impl Firestore {
             .token)
     }
 
-    async fn send(
+    fn document_url(&self, collection: &str, id: &str) -> String {
+        format!("{}/{collection}/{id}", self.documents_url)
+    }
+
+    /// Creates or replaces the document `collection/id`, if it meets `precondition`.
+    async fn patch(
+        &self,
+        collection: &str,
+        id: &str,
+        fields: Value,
+        precondition: Option<Precondition<'_>>,
+    ) -> Result<(), FirestoreError> {
+        let mut request = self.http_client.patch(self.document_url(collection, id));
+        let conditional = precondition.is_some();
+        if let Some(precondition) = precondition {
+            let (condition, value) = match precondition {
+                Precondition::Missing => ("currentDocument.exists", "false"),
+                Precondition::UpdatedAt(time) => ("currentDocument.updateTime", time),
+            };
+            request = request.query(&[(condition, value)]);
+        }
+        match self.write(request, fields).await {
+            Err(FirestoreError::Status {
+                code: Some(code), ..
+            }) if conditional && (code == "FAILED_PRECONDITION" || code == "ALREADY_EXISTS") => {
+                Err(FirestoreError::Conflict)
+            }
+            result => result,
+        }
+    }
+
+    /// Sends `request` with `fields` as the document's contents.
+    async fn write(
         &self,
         request: reqwest::RequestBuilder,
         fields: Value,
     ) -> Result<(), FirestoreError> {
-        let response = request
-            .bearer_auth(self.token().await?)
-            .json(&json!({ "fields": fields }))
-            .send()
-            .await
-            .map_err(FirestoreError::Request)?;
-        check_status(response).await?;
+        let request = request.json(&json!({ "fields": fields }));
+        check_status(self.send(request).await?).await?;
         Ok(())
     }
+
+    /// Sends `request` with an access token. The caller checks the response's status.
+    async fn send(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, FirestoreError> {
+        request
+            .bearer_auth(self.token().await?)
+            .send()
+            .await
+            .map_err(FirestoreError::Request)
+    }
+}
+
+/// A [`Document`] from the REST API's representation of one.
+fn document_from_rest(mut document: Value) -> Result<Document, FirestoreError> {
+    let update_time = document["updateTime"]
+        .as_str()
+        .ok_or(FirestoreError::MissingUpdateTime)?
+        .to_owned();
+    // `name` is the full path, ending in the collection and the document's ID.
+    let id = document["name"]
+        .as_str()
+        .and_then(|name| name.rsplit('/').next())
+        .unwrap_or_default()
+        .to_owned();
+    // An empty document has no fields at all.
+    let fields = match document["fields"].take() {
+        Value::Null => json!({}),
+        fields => fields,
+    };
+    Ok(Document {
+        id,
+        fields,
+        update_time,
+    })
 }
 
 /// `response` if it succeeded, else a [`FirestoreError::Status`] with its gRPC status.
@@ -209,10 +291,20 @@ fn grpc_status(body: &str) -> Option<String> {
     Some(body["error"]["status"].as_str()?.to_owned())
 }
 
-/// Converts a JSON object into Firestore's REST format for a document's fields.
+/// Converts `value`, e.g. a struct, into Firestore's REST format for a document's fields.
 ///
 /// Integers become `integerValue`, other numbers `doubleValue`, and objects `mapValue`.
-pub fn to_fields(object: &Map<String, Value>) -> Value {
+/// Fails if `value` doesn't serialize to a JSON object.
+pub fn to_fields(value: &impl Serialize) -> serde_json::Result<Value> {
+    match serde_json::to_value(value)? {
+        Value::Object(object) => Ok(object_to_fields(&object)),
+        _ => Err(serde::ser::Error::custom(
+            "a document's fields must be an object",
+        )),
+    }
+}
+
+fn object_to_fields(object: &Map<String, Value>) -> Value {
     Value::Object(
         object
             .iter()
@@ -251,7 +343,7 @@ fn to_firestore(value: &Value) -> Value {
             let values: Vec<Value> = items.iter().map(to_firestore).collect();
             json!({ "arrayValue": { "values": values } })
         }
-        Value::Object(object) => json!({ "mapValue": { "fields": to_fields(object) } }),
+        Value::Object(object) => json!({ "mapValue": { "fields": object_to_fields(object) } }),
     }
 }
 
@@ -265,7 +357,7 @@ fn from_firestore(value: &Value) -> Value {
             .as_i64()
             .or_else(|| inner.as_str()?.parse().ok())
             .map_or(Value::Null, Value::from),
-        "booleanValue" | "doubleValue" | "stringValue" => inner.clone(),
+        "booleanValue" | "doubleValue" | "stringValue" | "timestampValue" => inner.clone(),
         // An empty array or map has no `values` or `fields`.
         "arrayValue" => Value::Array(
             inner["values"]
@@ -293,10 +385,35 @@ mod tests {
             "tags": ["a", "b"],
             "days": { "2026-10-12": { "up": 1, "total": 2 } },
         });
-        let fields = to_fields(object.as_object().unwrap());
+        let fields = to_fields(&object).unwrap();
         assert_eq!(fields["latency_ms"], json!({ "integerValue": "120" }));
         assert_eq!(fields["ratio"], json!({ "doubleValue": 0.5 }));
         assert_eq!(fields["error"], json!({ "nullValue": null }));
         assert_eq!(from_fields(&fields), object);
+    }
+
+    #[test]
+    fn reads_a_document_from_rest() {
+        let document = document_from_rest(json!({
+            "name": "projects/p/databases/(default)/documents/alerts/abc123",
+            "fields": { "summary": { "stringValue": "Down" } },
+            "updateTime": "2026-10-17T12:00:00.123456Z",
+        }))
+        .unwrap();
+        assert_eq!(document.id, "abc123");
+        assert_eq!(document.update_time, "2026-10-17T12:00:00.123456Z");
+        assert_eq!(
+            document.decode::<Value>().unwrap(),
+            json!({ "summary": "Down" })
+        );
+
+        // An empty document has no `fields`.
+        let empty = document_from_rest(json!({ "name": "x/y", "updateTime": "t" })).unwrap();
+        assert_eq!(empty.fields, json!({}));
+
+        assert!(matches!(
+            document_from_rest(json!({ "name": "x/y" })),
+            Err(FirestoreError::MissingUpdateTime)
+        ));
     }
 }

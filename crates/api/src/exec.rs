@@ -48,13 +48,6 @@ pub(crate) struct Holder {
     pub name: String,
 }
 
-impl Exec {
-    /// Parses the document's fields, in Firestore's REST format.
-    pub fn from_fields(fields: &serde_json::Value) -> serde_json::Result<Self> {
-        serde_json::from_value(common::firestore::from_fields(fields))
-    }
-}
-
 pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Response {
     let exec = match read(&firestore).await {
         Ok(exec) => exec,
@@ -82,7 +75,7 @@ async fn read(
     firestore: &common::Firestore,
 ) -> Result<Exec, Box<dyn std::error::Error + Send + Sync>> {
     Ok(match firestore.get(COLLECTION, DOCUMENT_ID).await? {
-        Some(document) => Exec::from_fields(&document.fields)?,
+        Some(document) => document.decode()?,
         None => Exec::default(),
     })
 }

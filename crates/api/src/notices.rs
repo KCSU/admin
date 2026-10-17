@@ -49,19 +49,12 @@ pub(crate) struct Update {
     pub text: String,
 }
 
-impl Notices {
-    /// Parses the document's fields, in Firestore's REST format.
-    pub fn from_fields(fields: &serde_json::Value) -> serde_json::Result<Self> {
-        serde_json::from_value(common::firestore::from_fields(fields))
-    }
-}
-
 /// The stored notices, or none if the document hasn't been written yet.
 pub(crate) async fn read(
     firestore: &common::Firestore,
 ) -> Result<Notices, Box<dyn std::error::Error + Send + Sync>> {
     Ok(match firestore.get(COLLECTION, DOCUMENT_ID).await? {
-        Some(document) => Notices::from_fields(&document.fields)?,
+        Some(document) => document.decode()?,
         None => Notices::default(),
     })
 }

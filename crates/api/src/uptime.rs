@@ -98,7 +98,7 @@ async fn read(
     firestore: &common::Firestore,
 ) -> Result<Summary, Box<dyn std::error::Error + Send + Sync>> {
     let summary = match firestore.get(COLLECTION, DOCUMENT_ID).await? {
-        Some(document) => Summary::from_fields(&document.fields)?,
+        Some(document) => document.decode()?,
         None => Summary::default(),
     };
     Ok(summary.with_sites(SITES))

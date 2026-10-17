@@ -1,2 +1,14 @@
 @import "tailwindcss";
 @import "basecoat-css";
+
+:root {
+  color-scheme: dark;
+  scrollbar-gutter: stable;
+}
+
+@theme {
+  --radius-control: 6px;
+  --radius-surface: 12px;
+  --radius-md: var(--radius-control);
+  --radius-xl: var(--radius-surface);
+}
