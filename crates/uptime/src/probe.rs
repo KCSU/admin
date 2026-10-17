@@ -6,8 +6,8 @@ use crate::sites::Site;
 use crate::summary::Check;
 
 /// How long one request may take.
-pub const TIMEOUT: Duration = Duration::from_secs(5);
-const ATTEMPTS: u32 = 3;
+pub const TIMEOUT: Duration = Duration::from_secs(1);
+const ATTEMPTS: u32 = 5;
 const RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Checks `site`, retrying a failure up to [`ATTEMPTS`] times.
