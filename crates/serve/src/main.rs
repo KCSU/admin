@@ -8,10 +8,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
 
     let api = api::router(firestore);
-    let app = axum::Router::new()
-        .nest("/api/public", api.clone())
-        // todo(khm39): remove when ready
-        .nest("/api", api);
+    // todo(khm39): remove /api when ready
+    let app = api.clone().nest("/api", api);
     axum::serve(listener, app).await?;
     Ok(())
 }
