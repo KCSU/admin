@@ -117,4 +117,4 @@ jobs:
           --service-account="$UPTIME_SA"
           --set-env-vars=ALERTS_TOPIC="$ALERTS_TOPIC",GOOGLE_CLOUD_PROJECT="$PROJECT"
           --cpu=1 --memory=512Mi
-          --task-timeout=50s --max-retries=0
+          --task-timeout=20s --max-retries=0
