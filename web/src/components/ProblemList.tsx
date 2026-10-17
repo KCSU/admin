@@ -21,7 +21,7 @@ const RECENCY_TEXT: Record<Recency, string> = {
   older: 'text-muted-foreground',
 };
 
-const GRID = 'grid items-center gap-x-4 grid-cols-[6.5rem_minmax(0,1fr)_3rem_1rem] '
+const GRID = 'grid items-center gap-x-4 grid-cols-[6.5rem_minmax(0,1fr)_1rem] '
   + 'md:grid-cols-[7.5rem_minmax(0,1fr)_3.5rem_14.25rem_1rem]';
 
 const last = (problem: Problem) => new Date(problem.alerts[0].occurred_at);
@@ -61,7 +61,7 @@ export default function ProblemList({ problems, history, now }: {
                 <div class={`${GRID} border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground`}>
                   <span>Last raised</span>
                   <span>Problem</span>
-                  <span class="text-right">Alerts</span>
+                  <span class="hidden text-right md:block">Alerts</span>
                   <span class="hidden text-right md:block">Last {ACTIVITY_DAYS} days</span>
                   <span />
                 </div>
@@ -83,8 +83,11 @@ export default function ProblemList({ problems, history, now }: {
                           <span class="min-w-0">
                             <span class="block break-words font-medium md:truncate" title={problem.alerts[0].summary}>{problem.alerts[0].summary}</span>
                             <code class="block break-words font-mono text-xs text-muted-foreground md:truncate">{problem.source} · {problem.dedup_key}</code>
+                            <span class="mt-0.5 block text-xs text-muted-foreground md:hidden">
+                              {problem.alerts.length} {problem.alerts.length === 1 ? 'alert' : 'alerts'}
+                            </span>
                           </span>
-                          <span class="text-right text-xl font-semibold tabular-nums">{problem.alerts.length}</span>
+                          <span class="hidden text-right text-xl font-semibold tabular-nums md:block">{problem.alerts.length}</span>
                           <span class="hidden justify-end md:flex"><Activity alerts={history.get(problem.key) ?? problem.alerts} now={now} /></span>
                           <ChevronIcon open={open === problem.key} />
                         </button>

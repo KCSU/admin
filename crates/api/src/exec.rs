@@ -8,9 +8,14 @@ use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
 
+pub mod photo;
+mod validate;
+
+pub use validate::roles as validate_roles;
+
 /// The Firestore document holding the current exec.
-pub(crate) const COLLECTION: &str = "exec";
-pub(crate) const DOCUMENT_ID: &str = "current";
+pub const COLLECTION: &str = "exec";
+pub const DOCUMENT_ID: &str = "current";
 
 const CACHE_CONTROL: &str = "public, max-age=300";
 const ALLOW_ORIGIN: &str = "*";
@@ -18,16 +23,16 @@ const ALLOW_ORIGIN: &str = "*";
 /// The current exec, as stored in Firestore and served by the API.
 #[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
-pub(crate) struct Exec {
+pub struct Exec {
     /// When the exec was last edited, in Unix seconds.
     pub updated_at: i64,
     /// All roles, in display order.
     pub roles: Vec<Role>,
 }
 
-#[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
-pub(crate) struct Role {
+pub struct Role {
     /// A stable identifier, e.g. "president".
     pub id: String,
     /// e.g. "President".
@@ -36,15 +41,15 @@ pub(crate) struct Role {
     /// People currently holding the role. Empty while it's vacant.
     pub holders: Vec<Holder>,
     pub bio: Option<String>,
-    /// A public URL.
+    /// A public URL, in our bucket. See [`photo`].
     pub photo_url: Option<String>,
     /// Instagram handles without the leading "@".
     pub instagram: Vec<String>,
 }
 
-#[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
-pub(crate) struct Holder {
+pub struct Holder {
     pub name: String,
 }
 

@@ -9,6 +9,7 @@ const SIGN_OUT_URL = '/?gcp-iap-mode=CLEAR_LOGIN_COOKIE';
 
 const NAV = [
   { href: '/', label: 'Alerts' },
+  { href: '/exec', label: 'Exec' },
 ];
 
 export default function Layout({ email, path, children }: {

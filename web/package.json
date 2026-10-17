@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "tsc --noEmit",
+    "knip": "knip",
     "preview": "vite preview"
   },
   "packageManager": "pnpm@12.11.2",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
     "@tailwindcss/vite": "^4.3.3",
+    "knip": "6.39.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }

@@ -1,6 +1,6 @@
 //! Axum routers for the public admin API.
 
-mod exec;
+pub mod exec;
 mod notices;
 mod uptime;
 

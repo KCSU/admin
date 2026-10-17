@@ -2,33 +2,50 @@
 
 mod alerts;
 mod auth;
+mod error;
+mod exec;
+mod photos;
 
 use std::sync::Arc;
 
-use axum::extract::Request;
+use axum::extract::{DefaultBodyLimit, FromRef, Request};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::Response;
-use axum::routing::{any, get};
+use axum::routing::{any, get, post};
 use axum::{Extension, Json, Router, middleware};
-use serde_json::{Value, json};
 use tower_http::services::{ServeDir, ServeFile};
 
 use auth::{Auth, User};
+use error::{ErrorResponse, error};
+
+#[derive(Clone, FromRef)]
+struct AppState {
+    firestore: Arc<common::Firestore>,
+    storage: Arc<common::Storage>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = common::require_env("PORT")?;
     let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
-    let firestore = Arc::new(common::Firestore::new(&project)?);
+    let state = AppState {
+        firestore: Arc::new(common::Firestore::new(&project)?),
+        storage: Arc::new(common::Storage::new()?),
+    };
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
 
     let app = Router::new()
         .route("/api/me", get(me))
         .route("/api/alerts", get(alerts::list))
+        .route("/api/exec", get(exec::get).put(exec::put))
+        .route(
+            "/api/exec/photos",
+            post(photos::upload).layer(DefaultBodyLimit::max(photos::MAX_BYTES)),
+        )
         .route("/api/{*rest}", any(api_not_found))
         .nest_service("/assets", ServeDir::new("web/dist/assets"))
-        .with_state(firestore)
+        .with_state(state)
         .fallback_service(ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html")))
         .layer(middleware::from_fn(cache_control))
         .layer(middleware::from_fn(auth::same_origin))
@@ -49,8 +66,8 @@ fn auth_from_env() -> Auth {
     Auth::Iap
 }
 
-async fn api_not_found() -> (StatusCode, Json<Value>) {
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
+async fn api_not_found() -> ErrorResponse {
+    error(StatusCode::NOT_FOUND, "not found")
 }
 
 async fn me(Extension(user): Extension<User>) -> Json<User> {

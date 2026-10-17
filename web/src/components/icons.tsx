@@ -45,3 +45,46 @@ export function SignOutIcon({ class: className }: { class?: string }) {
     </Icon>
   );
 }
+
+export function PlusIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M5 12h14" /><path d="M12 5v14" />
+    </Icon>
+  );
+}
+
+export function TrashIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </Icon>
+  );
+}
+
+export function ExternalLinkIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M15 3h6v6" /><path d="M10 14 21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </Icon>
+  );
+}
+
+export function ImageUpIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21" />
+      <path d="m14 19.5 3-3 3 3" /><path d="M17 22v-5.5" /><circle cx="9" cy="9" r="2" />
+    </Icon>
+  );
+}
+
+export function XIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+    </Icon>
+  );
+}

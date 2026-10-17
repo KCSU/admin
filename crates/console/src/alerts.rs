@@ -7,7 +7,8 @@ use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+
+use crate::error::{ErrorResponse, error};
 
 const COLLECTION: &str = "alerts";
 
@@ -46,12 +47,6 @@ pub struct ListQuery {
 pub struct ListResponse {
     /// Newest first.
     alerts: Vec<Alert>,
-}
-
-type ErrorResponse = (StatusCode, Json<Value>);
-
-fn error(status: StatusCode, message: &str) -> ErrorResponse {
-    (status, Json(json!({ "error": message })))
 }
 
 /// `GET /api/alerts?days=30`: the alerts of the last `days` days, newest first.

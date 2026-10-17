@@ -1,12 +1,12 @@
 //! Auth middleware.
 
-use axum::Json;
 use axum::extract::{Request, State};
 use axum::http::{HeaderMap, Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
-use serde_json::json;
+
+use crate::error::error;
 
 // IAP adds this header to every request.
 const HEADER: &str = "x-goog-authenticated-user-email";
@@ -63,7 +63,7 @@ pub async fn require_user(State(auth): State<Auth>, mut request: Request, next: 
                 request.uri().path(),
                 request.headers().get(HEADER)
             );
-            error(StatusCode::UNAUTHORIZED, "not signed in")
+            error(StatusCode::UNAUTHORIZED, "not signed in").into_response()
         }
     }
 }
@@ -81,10 +81,6 @@ pub async fn same_origin(request: Request, next: Next) -> Response {
     if safe || same_origin {
         next.run(request).await
     } else {
-        error(StatusCode::FORBIDDEN, "cross-site requests are not allowed")
+        error(StatusCode::FORBIDDEN, "cross-site requests are not allowed").into_response()
     }
-}
-
-fn error(status: StatusCode, message: &str) -> Response {
-    (status, Json(json!({ "error": message }))).into_response()
 }

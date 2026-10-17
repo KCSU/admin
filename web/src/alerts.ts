@@ -54,7 +54,7 @@ export async function fetchAlerts(days: number): Promise<AlertsResponse> {
   return response.json();
 }
 
-export function problemKey(alert: Alert): string {
+function problemKey(alert: Alert): string {
   return `${alert.source}\u0000${alert.dedup_key}`;
 }
 

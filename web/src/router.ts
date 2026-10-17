@@ -17,7 +17,7 @@ export function setNavigationGuard(check: (() => boolean) | null) {
   guard = check;
 }
 
-export function navigate(path: string) {
+function navigate(path: string) {
   if (path === currentPath() || (guard && !guard())) return;
   history.pushState(null, '', path);
   window.dispatchEvent(new Event(EVENT));

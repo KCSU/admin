@@ -2,10 +2,11 @@
 
 use std::time::Duration;
 
-use google_cloud_auth::credentials::{AccessTokenCredentials, Builder};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
+
+use crate::google::{GoogleClient, SendError, SetupError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FirestoreError {
@@ -38,6 +39,24 @@ pub enum FirestoreError {
     MissingUpdateTime,
 }
 
+impl From<SetupError> for FirestoreError {
+    fn from(err: SetupError) -> Self {
+        match err {
+            SetupError::HttpClient(err) => Self::HttpClient(err),
+            SetupError::Credentials(err) => Self::CredentialsSetup(err),
+        }
+    }
+}
+
+impl From<SendError> for FirestoreError {
+    fn from(err: SendError) -> Self {
+        match err {
+            SendError::AccessToken(err) => Self::AccessToken(err),
+            SendError::Request(err) => Self::Request(err),
+        }
+    }
+}
+
 /// A document read from Firestore.
 pub struct Document {
     /// The document's ID within its collection.
@@ -66,8 +85,7 @@ pub enum Precondition<'a> {
 /// Reads and writes documents in the default Firestore database of a project.
 pub struct Firestore {
     documents_url: String,
-    http_client: reqwest::Client,
-    credentials: AccessTokenCredentials,
+    client: GoogleClient,
 }
 
 impl Firestore {
@@ -77,13 +95,7 @@ impl Firestore {
             documents_url: format!(
                 "https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents"
             ),
-            http_client: reqwest::Client::builder()
-                .timeout(Duration::from_secs(10))
-                .build()
-                .map_err(FirestoreError::HttpClient)?,
-            credentials: Builder::default()
-                .build_access_token_credentials()
-                .map_err(FirestoreError::CredentialsSetup)?,
+            client: GoogleClient::new(Duration::from_secs(10))?,
         })
     }
 
@@ -93,7 +105,7 @@ impl Firestore {
     /// See <https://firebase.google.com/docs/firestore/use-rest-api> for more details.
     pub async fn add(&self, collection: &str, fields: Value) -> Result<(), FirestoreError> {
         let url = format!("{}/{collection}", self.documents_url);
-        self.write(self.http_client.post(url), fields).await
+        self.write(self.client.http.post(url), fields).await
     }
 
     /// Creates the document `collection/id` and populates it with `fields`, or replaces
@@ -129,7 +141,7 @@ impl Firestore {
         collection: &str,
         id: &str,
     ) -> Result<Option<Document>, FirestoreError> {
-        let request = self.http_client.get(self.document_url(collection, id));
+        let request = self.client.http.get(self.document_url(collection, id));
         let response = self.send(request).await?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
@@ -162,7 +174,8 @@ impl Firestore {
             "limit": limit,
         }});
         let request = self
-            .http_client
+            .client
+            .http
             .post(format!("{}:runQuery", self.documents_url))
             .json(&query);
         let results: Vec<Value> = check_status(self.send(request).await?)
@@ -181,16 +194,6 @@ impl Firestore {
             .collect()
     }
 
-    /// A short-lived Google OAuth2 access token.
-    async fn token(&self) -> Result<String, FirestoreError> {
-        Ok(self
-            .credentials
-            .access_token()
-            .await
-            .map_err(FirestoreError::AccessToken)?
-            .token)
-    }
-
     fn document_url(&self, collection: &str, id: &str) -> String {
         format!("{}/{collection}/{id}", self.documents_url)
     }
@@ -203,7 +206,7 @@ impl Firestore {
         fields: Value,
         precondition: Option<Precondition<'_>>,
     ) -> Result<(), FirestoreError> {
-        let mut request = self.http_client.patch(self.document_url(collection, id));
+        let mut request = self.client.http.patch(self.document_url(collection, id));
         let conditional = precondition.is_some();
         if let Some(precondition) = precondition {
             let (condition, value) = match precondition {
@@ -238,11 +241,7 @@ impl Firestore {
         &self,
         request: reqwest::RequestBuilder,
     ) -> Result<reqwest::Response, FirestoreError> {
-        request
-            .bearer_auth(self.token().await?)
-            .send()
-            .await
-            .map_err(FirestoreError::Request)
+        Ok(self.client.send(request).await?)
     }
 }
 
