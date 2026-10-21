@@ -1,5 +1,7 @@
 // The KCSU exec, as shown at kcsu.org.uk/about-us/exec.
 
+import { json } from './api';
+
 interface Holder {
   name: string;
 }
@@ -27,30 +29,12 @@ export interface Exec {
 
 export const PUBLIC_PAGE = 'https://kcsu.org.uk/about-us/exec';
 
-/** The console refused a request. */
-export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message);
-  }
-}
-
-/** The response's JSON, or an {@link ApiError} with the console's message. */
-async function json<T>(response: Response): Promise<T> {
-  if (response.ok) return response.json();
-  const error = await response.json().then((body) => body.error, () => undefined);
-  throw new ApiError(response.status, typeof error === 'string' ? error : `Something went wrong (HTTP ${response.status}).`);
-}
-
 /** The published exec data. */
 export async function fetchExec(): Promise<Exec> {
   return json(await fetch('/api/exec', { headers: { Accept: 'application/json' } }));
 }
 
-/**
- * Replaces the exec with `roles`, and returns the server-validated copy.
- * If someone else published since, this fails with a 409.
- * {@link ApiError}.
- */
+/** Returns the server's validated copy. Fails with a 409 if someone published since. */
 export async function publishExec(updatedAt: number, roles: Role[]): Promise<Exec> {
   return json(await fetch('/api/exec', {
     method: 'PUT',

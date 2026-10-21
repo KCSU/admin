@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 
-import { ApiError, type Role, uploadPhoto } from '../exec';
+import { ApiError } from '../api';
+import { type Role, uploadPhoto } from '../exec';
 import { ImageUpIcon, XIcon } from './icons';
 
 /** A role's fields as typed, before lists are split. */

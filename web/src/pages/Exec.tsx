@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatDateTime } from '../alerts';
 import ExecEditor, { type RoleChange } from '../components/ExecEditor';
 import { ExternalLinkIcon } from '../components/icons';
-import { ApiError, type Exec as ExecData, PUBLIC_PAGE, type Role, fetchExec, publishExec, roleId } from '../exec';
+import { ApiError } from '../api';
+import { type Exec as ExecData, PUBLIC_PAGE, type Role, fetchExec, publishExec, roleId } from '../exec';
 import { setNavigationGuard } from '../router';
 
 export default function Exec() {
@@ -169,7 +170,7 @@ function useUnsavedWarning(dirty: boolean) {
     if (!dirty) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onBeforeUnload);
-    setNavigationGuard(() => confirm('You have unpublished changes to the exec. Leave anyway?'));
+    setNavigationGuard(() => confirm('You have unpublished changes. Leave anyway?'));
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       setNavigationGuard(null);
