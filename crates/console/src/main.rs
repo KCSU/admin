@@ -2,6 +2,7 @@
 
 mod alerts;
 mod auth;
+mod documents;
 mod error;
 mod exec;
 mod photos;
@@ -16,6 +17,7 @@ use axum::routing::{any, get, post};
 use axum::{Extension, Json, Router, middleware};
 use tower_http::services::{ServeDir, ServeFile};
 
+use api::notices::Notices;
 use auth::{Auth, User};
 use error::{ErrorResponse, error};
 
@@ -39,6 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/me", get(me))
         .route("/api/alerts", get(alerts::list))
         .route("/api/exec", get(exec::get).put(exec::put))
+        .route(
+            "/api/notices",
+            get(documents::get::<Notices>).put(documents::put::<Notices>),
+        )
         .route(
             "/api/exec/photos",
             post(photos::upload).layer(DefaultBodyLimit::max(photos::MAX_BYTES)),

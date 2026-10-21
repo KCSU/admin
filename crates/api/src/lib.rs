@@ -1,7 +1,7 @@
 //! Axum routers for the public admin API.
 
 pub mod exec;
-mod notices;
+pub mod notices;
 mod uptime;
 
 use std::sync::Arc;
