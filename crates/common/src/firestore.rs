@@ -2,11 +2,13 @@
 
 use std::time::Duration;
 
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use crate::google::{GoogleClient, SendError, SetupError};
+use crate::{TimestampOutOfRange, rfc3339};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FirestoreError {
@@ -21,6 +23,10 @@ pub enum FirestoreError {
 
     #[error("Firestore request failed")]
     Request(#[source] reqwest::Error),
+
+    /// The write went through, but its response couldn't be read.
+    #[error("reading Firestore's response to a successful write failed")]
+    WrittenResponse(#[source] reqwest::Error),
 
     /// Firestore explains the failure in the response body.
     #[error("Firestore returned {status}: {body}")]
@@ -74,6 +80,15 @@ impl Document {
     }
 }
 
+/// The document a write saved.
+#[derive(Debug)]
+pub struct Written {
+    /// The document's ID within its collection.
+    pub id: String,
+    /// The document's new `update_time`.
+    pub update_time: String,
+}
+
 /// What a document must look like for a write to go ahead.
 pub enum Precondition<'a> {
     /// The document must not exist.
@@ -103,7 +118,7 @@ impl Firestore {
     ///
     /// `fields` is the document's contents in Firestore's REST format.
     /// See <https://firebase.google.com/docs/firestore/use-rest-api> for more details.
-    pub async fn add(&self, collection: &str, fields: Value) -> Result<(), FirestoreError> {
+    pub async fn add(&self, collection: &str, fields: Value) -> Result<Written, FirestoreError> {
         let url = format!("{}/{collection}", self.documents_url);
         self.write(self.client.http.post(url), fields).await
     }
@@ -118,7 +133,7 @@ impl Firestore {
         collection: &str,
         id: &str,
         fields: Value,
-    ) -> Result<(), FirestoreError> {
+    ) -> Result<Written, FirestoreError> {
         self.patch(collection, id, fields, None).await
     }
 
@@ -131,7 +146,7 @@ impl Firestore {
         id: &str,
         fields: Value,
         precondition: Precondition<'_>,
-    ) -> Result<(), FirestoreError> {
+    ) -> Result<Written, FirestoreError> {
         self.patch(collection, id, fields, Some(precondition)).await
     }
 
@@ -205,7 +220,7 @@ impl Firestore {
         id: &str,
         fields: Value,
         precondition: Option<Precondition<'_>>,
-    ) -> Result<(), FirestoreError> {
+    ) -> Result<Written, FirestoreError> {
         let mut request = self.client.http.patch(self.document_url(collection, id));
         let conditional = precondition.is_some();
         if let Some(precondition) = precondition {
@@ -230,10 +245,19 @@ impl Firestore {
         &self,
         request: reqwest::RequestBuilder,
         fields: Value,
-    ) -> Result<(), FirestoreError> {
+    ) -> Result<Written, FirestoreError> {
         let request = request.json(&json!({ "fields": fields }));
-        check_status(self.send(request).await?).await?;
-        Ok(())
+        // The response's body is the written document.
+        let document: Value = check_status(self.send(request).await?)
+            .await?
+            .json()
+            .await
+            .map_err(FirestoreError::WrittenResponse)?;
+        let document = document_from_rest(document)?;
+        Ok(Written {
+            id: document.id,
+            update_time: document.update_time,
+        })
     }
 
     /// Sends `request` with an access token. The caller checks the response's status.
@@ -290,10 +314,43 @@ fn grpc_status(body: &str) -> Option<String> {
     Some(body["error"]["status"].as_str()?.to_owned())
 }
 
+/// Marks a [`Timestamp`], which would otherwise be just a string in [`serde_json::Value`].
+const TIMESTAMP_KEY: &str = "__firestore_timestamp__";
+
+/// A timestamp field in a document written with [`to_fields`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Timestamp(String);
+
+impl Timestamp {
+    pub fn from_unix(unix: i64) -> Result<Self, TimestampOutOfRange> {
+        rfc3339(unix).map(Self)
+    }
+
+    /// The time in RFC 3339.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Serialize for Timestamp {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry(TIMESTAMP_KEY, &self.0)?;
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Timestamp {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer).map(Self)
+    }
+}
+
 /// Converts `value`, e.g. a struct, into Firestore's REST format for a document's fields.
 ///
-/// Integers become `integerValue`, other numbers `doubleValue`, and objects `mapValue`.
-/// Fails if `value` doesn't serialize to a JSON object.
+/// Integers become `integerValue`, other numbers `doubleValue`, [`Timestamp`]s
+/// `timestampValue`, and other objects `mapValue`. Fails if `value` doesn't serialize to a
+/// JSON object.
 pub fn to_fields(value: &impl Serialize) -> serde_json::Result<Value> {
     match serde_json::to_value(value)? {
         Value::Object(object) => Ok(object_to_fields(&object)),
@@ -342,7 +399,18 @@ fn to_firestore(value: &Value) -> Value {
             let values: Vec<Value> = items.iter().map(to_firestore).collect();
             json!({ "arrayValue": { "values": values } })
         }
-        Value::Object(object) => json!({ "mapValue": { "fields": object_to_fields(object) } }),
+        Value::Object(object) => match timestamp(object) {
+            Some(time) => json!({ "timestampValue": time }),
+            None => json!({ "mapValue": { "fields": object_to_fields(object) } }),
+        },
+    }
+}
+
+/// The RFC 3339 time in `object`, if it's a serialized [`Timestamp`].
+fn timestamp(object: &Map<String, Value>) -> Option<&Value> {
+    match object.len() {
+        1 => object.get(TIMESTAMP_KEY),
+        _ => None,
     }
 }
 
@@ -389,6 +457,27 @@ mod tests {
         assert_eq!(fields["ratio"], json!({ "doubleValue": 0.5 }));
         assert_eq!(fields["error"], json!({ "nullValue": null }));
         assert_eq!(from_fields(&fields), object);
+    }
+
+    #[test]
+    fn converts_timestamps() {
+        let at = Timestamp::from_unix(1_790_864_909).unwrap();
+        let fields = to_fields(&json!({ "at": at, "nested": { "at": at } })).unwrap();
+        assert_eq!(
+            fields["at"],
+            json!({ "timestampValue": "2026-10-01T14:28:29Z" })
+        );
+        assert_eq!(
+            fields["nested"]["mapValue"]["fields"]["at"],
+            json!({ "timestampValue": "2026-10-01T14:28:29Z" })
+        );
+
+        #[derive(Deserialize)]
+        struct Read {
+            at: Timestamp,
+        }
+        let read: Read = serde_json::from_value(from_fields(&fields)).unwrap();
+        assert_eq!(read.at, at);
     }
 
     #[test]

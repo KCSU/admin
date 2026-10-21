@@ -1,6 +1,10 @@
 //! Persists alerts in Firestore, one document per alert.
 
-use serde_json::{Value, json};
+use std::collections::HashMap;
+
+use common::Timestamp;
+use serde::Serialize;
+use serde_json::Value;
 
 use crate::{Alert, ConsumeError};
 
@@ -29,40 +33,45 @@ impl Firestore {
     /// Adds `alert` to the `alerts` collection as a new document.
     pub async fn handle(&self, alert: &Alert) -> Result<(), ConsumeError> {
         let fields = fields(alert, common::unix_now())?;
-        self.client
-            .add(FIRESTORE_COLLECTION_NAME, fields)
-            .await
-            .map_err(ConsumeError::Firestore)
+        match self.client.add(FIRESTORE_COLLECTION_NAME, fields).await {
+            Ok(_) | Err(common::FirestoreError::WrittenResponse(_)) => Ok(()),
+            Err(err) => Err(ConsumeError::Firestore(err)),
+        }
     }
+}
+
+/// An [`Alert`] as stored in Firestore.
+#[derive(Serialize)]
+struct AlertDocument<'a> {
+    source: &'a str,
+    dedup_key: &'a str,
+    summary: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    detail: Option<&'a str>,
+    extra: &'a HashMap<String, String>,
+    occurred_at: Timestamp,
+    expires_at: Timestamp,
 }
 
 /// Convert [`Alert`] to Firestore's REST document format.
 fn fields(alert: &Alert, now: i64) -> Result<Value, ConsumeError> {
-    let timestamp = |unix| common::rfc3339(unix).map_err(ConsumeError::Timestamp);
-    let string_value = |text: &str| json!({ "stringValue": text });
-
-    let extra: serde_json::Map<String, Value> = alert
-        .extra
-        .iter()
-        .map(|(key, value)| (key.clone(), string_value(value)))
-        .collect();
-
-    let mut fields = json!({
-        "source": string_value(&alert.source),
-        "dedup_key": string_value(&alert.dedup_key),
-        "summary": string_value(&alert.summary),
-        "extra": { "mapValue": { "fields": extra } },
-        "occurred_at": { "timestampValue": timestamp(alert.occurred_at_unix)? },
-        "expires_at": { "timestampValue": timestamp(now + RETENTION_SECS)? },
-    });
-    if let Some(detail) = &alert.detail {
-        fields["detail"] = string_value(detail);
-    }
-    Ok(fields)
+    let timestamp = |unix| Timestamp::from_unix(unix).map_err(ConsumeError::Timestamp);
+    let document = AlertDocument {
+        source: &alert.source,
+        dedup_key: &alert.dedup_key,
+        summary: &alert.summary,
+        detail: alert.detail.as_deref(),
+        extra: &alert.extra,
+        occurred_at: timestamp(alert.occurred_at_unix)?,
+        expires_at: timestamp(now + RETENTION_SECS)?,
+    };
+    common::firestore::to_fields(&document).map_err(ConsumeError::Encode)
 }
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]

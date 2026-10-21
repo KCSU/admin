@@ -70,7 +70,7 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
         .set_if(COLLECTION, DOCUMENT_ID, fields, precondition)
         .await
     {
-        Ok(()) => Ok(()),
+        Ok(_) | Err(FirestoreError::WrittenResponse(_)) => Ok(()),
         // Uptime probe runs somehow overlapped, and the other one saved first.
         Err(FirestoreError::Conflict) => {
             eprintln!(

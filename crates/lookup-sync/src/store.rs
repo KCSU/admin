@@ -1,31 +1,43 @@
 //! The Firestore document for a group snapshot.
 
+use common::Timestamp;
 use proto::lookup::v1::GroupSnapshot;
-use serde_json::{Value, json};
+use serde::Serialize;
 
 /// The Firestore collection name alerts are stored in.
 pub(crate) const FIRESTORE_COLLECTION_NAME: &str = "lookup_groups";
 
-/// Convert [`GroupSnapshot`] to Firestore's REST document format.
-pub(crate) fn fields(snapshot: &GroupSnapshot) -> Result<Value, common::TimestampOutOfRange> {
-    let string_value = |text: &str| json!({ "stringValue": text });
+/// A [`GroupSnapshot`] as stored in Firestore.
+#[derive(Serialize)]
+pub(crate) struct GroupDocument<'a> {
+    id: &'a str,
+    name: &'a str,
+    description: &'a str,
+    fetched_at: Timestamp,
+    members: Vec<MemberDocument<'a>>,
+}
 
-    let members: Vec<Value> = snapshot
-        .members
-        .iter()
-        .map(|member| {
-            json!({ "mapValue": { "fields": {
-                "crsid": string_value(&member.crsid),
-                "name": string_value(&member.name),
-            }}})
+#[derive(Serialize)]
+struct MemberDocument<'a> {
+    crsid: &'a str,
+    name: &'a str,
+}
+
+impl<'a> GroupDocument<'a> {
+    pub(crate) fn new(snapshot: &'a GroupSnapshot) -> Result<Self, common::TimestampOutOfRange> {
+        Ok(Self {
+            id: &snapshot.id,
+            name: &snapshot.name,
+            description: &snapshot.description,
+            fetched_at: Timestamp::from_unix(snapshot.fetched_at_unix)?,
+            members: snapshot
+                .members
+                .iter()
+                .map(|member| MemberDocument {
+                    crsid: &member.crsid,
+                    name: &member.name,
+                })
+                .collect(),
         })
-        .collect();
-
-    Ok(json!({
-        "id": string_value(&snapshot.id),
-        "name": string_value(&snapshot.name),
-        "description": string_value(&snapshot.description),
-        "fetched_at": { "timestampValue": common::rfc3339(snapshot.fetched_at_unix)? },
-        "members": { "arrayValue": { "values": members } },
-    }))
+    }
 }

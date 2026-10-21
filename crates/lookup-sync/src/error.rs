@@ -40,6 +40,10 @@ pub enum Error {
     #[error("snapshot has an invalid timestamp")]
     Timestamp(#[source] common::TimestampOutOfRange),
 
+    /// The snapshot couldn't be converted into a Firestore document.
+    #[error("encoding snapshot for Firestore failed")]
+    Encode(#[source] serde_json::Error),
+
     /// Firestore rejected or failed to store a snapshot.
     #[error("storing snapshot for group {group_id} failed")]
     Store {

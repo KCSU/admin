@@ -58,14 +58,20 @@ pub async fn sync(
         };
 
         // Store in Firestore
-        let fields = store::fields(&snapshot).map_err(Error::Timestamp)?;
-        firestore
+        let document = store::GroupDocument::new(&snapshot).map_err(Error::Timestamp)?;
+        let fields = common::firestore::to_fields(&document).map_err(Error::Encode)?;
+        match firestore
             .set(store::FIRESTORE_COLLECTION_NAME, &snapshot.id, fields)
             .await
-            .map_err(|source| Error::Store {
-                group_id: group_id.to_owned(),
-                source,
-            })?;
+        {
+            Ok(_) | Err(common::FirestoreError::WrittenResponse(_)) => {}
+            Err(source) => {
+                return Err(Error::Store {
+                    group_id: group_id.to_owned(),
+                    source,
+                });
+            }
+        }
 
         // Publish to pub/sub
         let message = Message::new()

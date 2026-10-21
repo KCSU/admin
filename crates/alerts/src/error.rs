@@ -32,6 +32,9 @@ pub enum ConsumeError {
     #[error("alert has an invalid timestamp")]
     Timestamp(#[source] common::TimestampOutOfRange),
 
+    #[error("encoding alert for Firestore failed")]
+    Encode(#[source] serde_json::Error),
+
     #[error("persisting alert to Firestore failed")]
     Firestore(#[source] common::FirestoreError),
 }
