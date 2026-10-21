@@ -2,7 +2,7 @@
 
 import { type Versioned, fetchDocument, saveDocument } from './api';
 
-export interface Update {
+interface Update {
   /** Unix seconds. */
   at: number;
   text: string;
