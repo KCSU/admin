@@ -245,6 +245,17 @@ function IncidentEditor({ notice, onChange, onRemove }: {
           />
         </div>
         <div class="field">
+          <label for={`${id}-body`}>Description</label>
+          <textarea
+            id={`${id}-body`}
+            rows={3}
+            class="field-sizing-content"
+            placeholder="Optional description."
+            value={notice.body ?? ''}
+            onInput={(e) => set('body', e.currentTarget.value || null)}
+          />
+        </div>
+        <div class="field">
           <label>Affects</label>
           <div class="flex flex-wrap gap-2">
             {SITES.map((site) => {
