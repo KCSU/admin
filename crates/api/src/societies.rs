@@ -64,7 +64,10 @@ pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Resp
     let societies = match read(&firestore).await {
         Ok(societies) => societies,
         Err(err) => {
-            eprintln!("reading the societies failed: {}", common::report(&*err));
+            log::error!(
+                "reading societies data from Firestore failed: {}",
+                common::report(&*err)
+            );
             return (
                 StatusCode::BAD_GATEWAY,
                 [(header::ACCESS_CONTROL_ALLOW_ORIGIN, ALLOW_ORIGIN)],

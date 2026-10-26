@@ -54,13 +54,8 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
 
     for site in alerting.filter(|site| site.alert_due(now)) {
         // Only mark as alerted once sent successfully.
-        match send_alert(alerts, site).await {
-            Ok(()) => site.record_alert(now),
-            Err(err) => eprintln!(
-                "sending the down alert for {} failed: {}",
-                site.id,
-                common::report(&err)
-            ),
+        if send_alert(alerts, site).await {
+            site.record_alert(now);
         }
     }
 
@@ -73,7 +68,7 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
         Ok(_) | Err(FirestoreError::WrittenResponse(_)) => Ok(()),
         // Uptime probe runs somehow overlapped, and the other one saved first.
         Err(FirestoreError::Conflict) => {
-            eprintln!(
+            log::warn!(
                 "the summary changed unexpectedly during this run; discarding this run's results"
             );
             Ok(())
@@ -82,7 +77,8 @@ pub async fn run(firestore: &common::Firestore, alerts: &AlertPublisher) -> Resu
     }
 }
 
-async fn send_alert(alerts: &AlertPublisher, site: &SiteStatus) -> Result<(), alerts::SendError> {
+/// Whether the alert was sent.
+async fn send_alert(alerts: &AlertPublisher, site: &SiteStatus) -> bool {
     let mut alert = alerts
         .alert(
             format!("down:{}", site.id),

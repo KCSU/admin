@@ -6,6 +6,7 @@ publish.workspace = true
 
 [dependencies]
 google-cloud-auth = { version = "1.17", default-features = false }
+log = { version = "0.4", features = ["std"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 serde = "1"
 serde_json = "1"

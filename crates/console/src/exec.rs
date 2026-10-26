@@ -45,21 +45,18 @@ pub async fn put(
         roles: update.roles,
     };
     let saved = documents::write(&firestore, current.version.as_deref(), exec).await?;
-    eprintln!("{} updated the exec", user.email);
+    log::info!("{} updated the exec", user.email);
 
     if let Err(err) = github.dispatch("exec-updated").await {
         let report = common::report(&err);
-        eprintln!("asking for a site rebuild failed: {report}");
-        let sent = alerts
+        log::error!("asking for a site rebuild failed: {report}");
+        alerts
             .alert("site-rebuild-failed", "Rebuilding kcsu.org.uk failed")
             .detail(format!(
                 "asking GitHub to rebuild after an exec change failed: {report}"
             ))
             .send()
             .await;
-        if let Err(alert_err) = sent {
-            eprintln!("sending alert failed: {}", common::report(&alert_err));
-        }
     }
     Ok(Json(saved.data))
 }

@@ -9,6 +9,7 @@ alerts = { path = "../alerts" }
 common = { path = "../common" }
 google-cloud-gax = { version = "1.15.0", default-features = false }
 google-cloud-pubsub = "1.5.0"
+log = "0.4"
 prost = "0.14.4"
 proto = { path = "../proto" }
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "form", "rustls"] }

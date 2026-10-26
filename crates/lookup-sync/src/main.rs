@@ -1,21 +1,21 @@
 use alerts::AlertPublisher;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::process::ExitCode {
+    common::log::init();
+    common::exit_code(start().await)
+}
+
+async fn start() -> Result<(), Box<dyn std::error::Error>> {
     let alerts_topic = common::require_env("ALERTS_TOPIC")?;
     let alerts = AlertPublisher::new(&alerts_topic, "admin/lookup-sync").await?;
 
     if let Err(err) = run().await {
-        let sent = alerts
+        alerts
             .alert("sync-failed", "Lookup sync failed")
             .detail(common::report(&*err))
             .send()
             .await;
-
-        // If sending the alert itself failed
-        if let Err(alert_err) = sent {
-            eprintln!("sending alert failed: {}", common::report(&alert_err));
-        }
         return Err(err);
     }
     Ok(())

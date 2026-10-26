@@ -36,7 +36,12 @@ struct AppState {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::process::ExitCode {
+    common::log::init();
+    common::exit_code(start().await)
+}
+
+async fn start() -> Result<(), Box<dyn std::error::Error>> {
     let port = common::require_env("PORT")?;
     let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
     let github_token = common::require_env("GITHUB_DISPATCH_TOKEN")?;
@@ -81,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn auth_from_env() -> Auth {
     #[cfg(debug_assertions)]
     if let Ok(email) = std::env::var("DEV_USER_EMAIL") {
-        eprintln!("DEV_USER_EMAIL is set. Everyone is signed in as {email}");
+        log::warn!("DEV_USER_EMAIL is set. Everyone is signed in as {email}");
         return Auth::Dev(User { email });
     }
     Auth::Iap

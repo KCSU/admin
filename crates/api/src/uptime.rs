@@ -60,15 +60,18 @@ pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Resp
         futures_util::future::join(read(&firestore), notices::read(&firestore)).await;
 
     let notices = notices.unwrap_or_else(|err| {
-        eprintln!("reading notices failed: {}", common::report(&*err));
+        log::error!(
+            "reading status notices from Firestore failed: {}",
+            common::report(&*err)
+        );
         Notices::default()
     });
 
     let summary = match summary {
         Ok(summary) => summary,
         Err(err) => {
-            eprintln!(
-                "reading the uptime summary failed: {}",
+            log::error!(
+                "reading uptime summary from Firestore failed: {}",
                 common::report(&*err)
             );
             return (

@@ -44,13 +44,13 @@ pub async fn upload(
         .create(BUCKET, &object, content_type, CACHE_CONTROL, body.to_vec())
         .await
         .map_err(|err| {
-            eprintln!("uploading {object} failed: {}", common::report(&err));
+            log::error!("uploading {object} failed: {}", common::report(&err));
             error(
                 StatusCode::BAD_GATEWAY,
                 "The photo couldn't be uploaded. Please try again.",
             )
         })?;
-    eprintln!("{} uploaded {object}", user.email);
+    log::info!("{} uploaded {object}", user.email);
     Ok(Json(Uploaded {
         url: api::exec::photo::url(&name),
     }))

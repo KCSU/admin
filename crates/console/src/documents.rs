@@ -42,7 +42,7 @@ pub async fn put<T: Editable>(
     Json(edit): Json<Versioned<T>>,
 ) -> Result<Json<Versioned<T>>, ErrorResponse> {
     let saved = write(&firestore, edit.version.as_deref(), edit.data).await?;
-    eprintln!("{} updated {}", user.email, path::<T>());
+    log::info!("{} updated {}", user.email, path::<T>());
     Ok(Json(saved))
 }
 
@@ -104,7 +104,7 @@ pub fn conflict() -> ErrorResponse {
 }
 
 fn failed<T: Editable>(doing: &str, err: &(dyn std::error::Error + 'static)) -> ErrorResponse {
-    eprintln!("{doing} {} failed: {}", path::<T>(), common::report(err));
+    log::error!("{doing} {} failed: {}", path::<T>(), common::report(err));
     error(
         StatusCode::BAD_GATEWAY,
         "Couldn't reach the database. Please try again.",

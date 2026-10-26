@@ -66,7 +66,10 @@ pub async fn list(
         .recent(COLLECTION, "occurred_at", &since, MAX_ALERTS)
         .await
         .map_err(|err| {
-            eprintln!("listing alerts failed: {}", common::report(&err));
+            log::error!(
+                "listing alerts from Firestore failed: {}",
+                common::report(&err)
+            );
             error(StatusCode::BAD_GATEWAY, "alerts couldn't be loaded")
         })?;
 
@@ -78,7 +81,7 @@ pub async fn list(
                 Some(alert)
             }
             Err(err) => {
-                eprintln!("skipping alert {}: {err}", document.id);
+                log::warn!("skipping alert {}: {err}", document.id);
                 None
             }
         })

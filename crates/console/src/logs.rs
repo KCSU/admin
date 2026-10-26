@@ -96,7 +96,10 @@ pub async fn list(
             .list(PROJECTS, &filter, PAGE_SIZE, page_token.as_deref())
             .await
             .map_err(|err| {
-                eprintln!("listing logs failed: {}", common::report(&err));
+                log::error!(
+                    "listing logs from Google Cloud failed: {}",
+                    common::report(&err)
+                );
                 match err {
                     common::LoggingError::Status {
                         status: StatusCode::TOO_MANY_REQUESTS,

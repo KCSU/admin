@@ -86,15 +86,16 @@ impl Handler {
         if let Some(dedup) = &self.dedup
             && !dedup.try_mark_sent(alert, marked_at)
         {
-            eprintln!(
+            log::info!(
                 "{name} dropped repeat of alert {}/{}",
-                alert.source, alert.dedup_key
+                alert.source,
+                alert.dedup_key
             );
             return;
         }
 
         if let Err(err) = self.handle_with_retries(alert).await {
-            eprintln!(
+            log::error!(
                 "{name} failed to handle alert {}/{}: {}",
                 alert.source,
                 alert.dedup_key,
@@ -113,7 +114,7 @@ impl Handler {
             match self.handler.handle(alert).await {
                 Err(err) if err.is_transient() && attempt < self.retry.attempts => {
                     let delay = self.retry.delay(attempt);
-                    eprintln!(
+                    log::warn!(
                         "{} attempt {attempt} at alert {}/{} failed, retrying in {delay:?}: {}",
                         self.handler.name(),
                         alert.source,
@@ -145,7 +146,7 @@ async fn receive(State(handlers): State<Arc<[Handler]>>, body: Bytes) -> StatusC
         Ok(alert) => {
             join_all(handlers.iter().map(|handler| handler.run(&alert))).await;
         }
-        Err(err) => eprintln!("dropping unreadable push request: {}", common::report(&err)),
+        Err(err) => log::error!("dropping unreadable push request: {}", common::report(&err)),
     }
 
     // Always 204, since alert handlers should not handle the same alert twice.

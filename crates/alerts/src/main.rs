@@ -10,7 +10,16 @@ use alerts::retry::Retry;
 use alerts::{AlertHandler, Handler};
 
 #[tokio::main]
-async fn main() -> Result<(), BoxError> {
+async fn main() -> std::process::ExitCode {
+    common::log::init();
+    common::exit_code(
+        start()
+            .await
+            .map_err(|err| err as Box<dyn std::error::Error>),
+    )
+}
+
+async fn start() -> Result<(), BoxError> {
     let webhook = common::require_env("CHAT_WEBHOOK_URL")?;
     let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
 

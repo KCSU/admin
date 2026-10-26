@@ -57,7 +57,10 @@ pub(crate) async fn get(State(firestore): State<Arc<common::Firestore>>) -> Resp
     let exec = match read(&firestore).await {
         Ok(exec) => exec,
         Err(err) => {
-            eprintln!("reading the exec failed: {}", common::report(&*err));
+            log::error!(
+                "reading exec data from Firestore failed: {}",
+                common::report(&*err)
+            );
             return (
                 StatusCode::BAD_GATEWAY,
                 [(header::ACCESS_CONTROL_ALLOW_ORIGIN, ALLOW_ORIGIN)],

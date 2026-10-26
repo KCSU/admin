@@ -57,7 +57,7 @@ pub async fn require_user(State(auth): State<Auth>, mut request: Request, next: 
             next.run(request).await
         }
         None => {
-            eprintln!(
+            log::warn!(
                 "refused {} {}: {HEADER} is {:?}",
                 request.method(),
                 request.uri().path(),

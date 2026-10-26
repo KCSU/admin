@@ -9,6 +9,7 @@ alerts = { path = "../alerts" }
 api = { path = "../api" }
 axum = { version = "0.8.9", features = ["macros"] }
 common = { path = "../common" }
+log = "0.4"
 rand = "0.9"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1.0.229", features = ["derive"] }

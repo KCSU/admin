@@ -19,7 +19,7 @@ use crate::{Alert, SendError, empty_field};
 ///     .detail("lookup request for group 105777 failed: timed out")
 ///     .extra("group_id", "105777")
 ///     .send()
-///     .await?;
+///     .await;
 /// # Ok(())
 /// # }
 /// ```
@@ -85,15 +85,29 @@ impl AlertBuilder<'_> {
         self
     }
 
-    /// Publish the alert.
-    pub async fn send(self) -> Result<(), SendError> {
-        let message = to_message(&self.alert)?;
-        self.publisher
-            .publisher
-            .publish(message)
-            .await
-            .map_err(SendError::Publish)?;
-        Ok(())
+    /// Publish the alert. Returns `true` if the alert was published.
+    ///
+    /// A failure to publish the alert is logged.
+    pub async fn send(self) -> bool {
+        let sent = match to_message(&self.alert) {
+            Ok(message) => self
+                .publisher
+                .publisher
+                .publish(message)
+                .await
+                .map(|_| ())
+                .map_err(SendError::Publish),
+            Err(err) => Err(err),
+        };
+        if let Err(err) = &sent {
+            log::error!(
+                "sending alert {}/{} failed: {}",
+                self.alert.source,
+                self.alert.dedup_key,
+                common::report(err)
+            );
+        }
+        sent.is_ok()
     }
 }
 
