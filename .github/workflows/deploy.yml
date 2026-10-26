@@ -109,7 +109,7 @@ jobs:
           --service-account="$LOOKUP_SYNC_SA"
           --set-secrets=CAMBRIDGE_UIS_API_KEY=lookup-client-id:latest,CAMBRIDGE_UIS_API_SECRET=lookup-client-secret:latest
           --set-env-vars=PUBSUB_TOPIC="$PUBSUB_TOPIC",ALERTS_TOPIC="$ALERTS_TOPIC",GOOGLE_CLOUD_PROJECT="$PROJECT"
-          --task-timeout=5m --max-retries=1
+          --task-timeout=10m --max-retries=0
 
       - name: Deploy job uptime
         run: >

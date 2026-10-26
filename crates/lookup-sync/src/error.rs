@@ -52,3 +52,22 @@ pub enum Error {
         source: common::FirestoreError,
     },
 }
+
+impl Error {
+    pub fn is_transient(&self) -> bool {
+        match self {
+            // A timeout, a dropped connection or a garbled response.
+            Self::Token(source) | Self::Lookup { source, .. } => {
+                source.status().is_none_or(|status| {
+                    status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                })
+            }
+            Self::EmptyGroup { .. } | Self::Publish { .. } | Self::Store { .. } => true,
+            Self::HttpClient(_)
+            | Self::PubSubSetup(_)
+            | Self::StoreSetup(_)
+            | Self::Timestamp(_)
+            | Self::Encode(_) => false,
+        }
+    }
+}
