@@ -79,7 +79,7 @@ export default function Status() {
       setDraft(saved.data.notices);
     } catch (err) {
       console.error('publishing the incidents failed:', err);
-      alert(err instanceof ApiError ? err.message : 'The incidents couldn’t be published. Please try again.');
+      alert(err instanceof ApiError ? err.message : 'The incidents couldn\'t be published. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -91,7 +91,7 @@ export default function Status() {
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">Incidents</h1>
           <p class="mt-1 text-sm text-muted-foreground">
-            As shown on status.kcsu.org.uk. Edits are local until you hit publish.
+            As shown on status.kcsu.org.uk.
           </p>
         </div>
         <a class="btn" data-variant="outline" data-size="sm" href={PUBLIC_PAGE} target="_blank" rel="noreferrer">

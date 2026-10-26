@@ -2,6 +2,7 @@
 
 pub mod exec;
 pub mod notices;
+mod societies;
 mod uptime;
 
 use std::sync::Arc;
@@ -14,6 +15,7 @@ pub fn router(firestore: common::Firestore) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/exec", get(exec::get))
+        .route("/societies", get(societies::get))
         .route("/uptime", get(uptime::get))
         .fallback(not_found)
         .with_state(Arc::new(firestore))

@@ -58,7 +58,7 @@ export default function Exec() {
       alert('Your changes will be on the website soon; this may take a couple of minutes.');
     } catch (err) {
       console.error('publishing the exec failed:', err);
-      alert(err instanceof ApiError ? err.message : 'The exec couldn’t be published. Please try again.');
+      alert(err instanceof ApiError ? err.message : 'The exec couldn\'t be published. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -70,7 +70,7 @@ export default function Exec() {
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">Exec</h1>
           <p class="mt-1 text-sm text-muted-foreground">
-            The committee as shown on the KCSU website (kcsu.org.uk). Edits are local until you hit publish.
+            The committee as shown on the KCSU website (kcsu.org.uk).
           </p>
           {published && published.updated_at > 0 && (
             <p class="mt-1 text-xs text-muted-foreground">
