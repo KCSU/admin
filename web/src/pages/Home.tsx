@@ -3,6 +3,7 @@ import { onLinkClick } from '../router';
 const CARDS = [
   { href: '/alerts', title: 'Alerts', subtitle: 'View alerts that have been raised by KCSU’s services.' },
   { href: '/exec', title: 'Exec Details', subtitle: 'The committee as shown on the KCSU website (kcsu.org.uk).' },
+  { href: '/logs', title: 'Logs', subtitle: 'Search the logs of KCSU’s services on Google Cloud.' },
   { href: '/status', title: 'Status Page', subtitle: 'Incidents and maintenance, as shown on status.kcsu.org.uk.' },
 ];
 

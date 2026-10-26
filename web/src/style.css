@@ -21,3 +21,7 @@
   font-family: 'Figtree'; font-weight: 600; font-display: swap;
   src: url('./fonts/figtree-latin-600-normal.woff2') format('woff2');
 }
+
+.log-volume .u-select {
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}

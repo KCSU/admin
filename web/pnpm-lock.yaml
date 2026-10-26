@@ -175,6 +175,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
+      uplot:
+        specifier: ^1.6.32
+        version: 1.6.32
     devDependencies:
       '@preact/preset-vite':
         specifier: ^2.10.6
@@ -1326,6 +1329,9 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
+  uplot@1.6.32:
+    resolution: {integrity: sha512-KIMVnG68zvu5XXUbC4LQEPnhwOxBuLyW1AHtpm6IKTXImkbLgkMy+jabjLgSLMasNuGGzQm/ep3tOkyTxpiQIw==}
+
   vite-prerender-plugin@0.5.14:
     resolution: {integrity: sha512-X2w9AS1OhwEUec9HSryGAmEnEQJGhW6eFoiCVJv8BfOTVpM8SOjk75cEw/IC28APDHZudeIRbP8Sp7wfABq+Aw==}
     peerDependencies:
@@ -2321,6 +2327,8 @@ snapshots:
       browserslist: 4.29.3
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  uplot@1.6.32: {}
 
   vite-prerender-plugin@0.5.14(vite@8.3.4(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1)):
     dependencies:

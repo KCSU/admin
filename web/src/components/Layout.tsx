@@ -11,21 +11,24 @@ const SIGN_OUT_URL = '/?gcp-iap-mode=CLEAR_LOGIN_COOKIE';
 const NAV = [
   { href: '/alerts', label: 'Alerts' },
   { href: '/exec', label: 'Exec' },
+  { href: '/logs', label: 'Logs' },
   { href: '/status', label: 'Status Page' },
 ];
 
-export default function Layout({ email, path, children }: {
+export default function Layout({ email, path, wide = false, children }: {
   email: string;
   path: string;
+  wide?: boolean;
   children: ComponentChildren;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const width = wide ? 'max-w-screen-2xl' : 'max-w-5xl';
   useEffect(() => setMenuOpen(false), [path]);
 
   return (
     <div class="min-h-screen bg-background">
       <header class="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
-        <div class="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
+        <div class={`mx-auto flex h-14 ${width} items-center gap-6 px-4`}>
           <a href="/" class="flex shrink-0 items-center" aria-label="KCSU Admin" onClick={(e) => onLinkClick(e, '/')}>
             <Logo class="h-5" />
           </a>
@@ -112,7 +115,7 @@ export default function Layout({ email, path, children }: {
           </div>
         )}
       </header>
-      <main class="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main class={`mx-auto ${width} px-4 py-8`}>{children}</main>
     </div>
   );
 }
