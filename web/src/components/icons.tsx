@@ -81,6 +81,14 @@ export function ImageUpIcon({ class: className }: { class?: string }) {
   );
 }
 
+export function MenuIcon({ class: className }: { class?: string }) {
+  return (
+    <Icon class={className}>
+      <path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" />
+    </Icon>
+  );
+}
+
 export function XIcon({ class: className }: { class?: string }) {
   return (
     <Icon class={className}>
