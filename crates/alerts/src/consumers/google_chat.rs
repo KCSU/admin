@@ -42,12 +42,10 @@ impl GoogleChat {
 
 const ADMIN_URL: &str = "https://admin.kcsu.org.uk/alerts";
 const ICON_URL: &str = "https://www.gstatic.com/images/icons/material/system/2x/error_red_48dp.png";
-const SUBTITLE: &str = "Please investigate this issue urgently. This alert is sent automatically \
-                        when a serious issue is detected and needs attention.";
 
 /// Format the alert into a Google Chat card.
 fn chat_message(alert: &Alert) -> serde_json::Value {
-    let title = format!("Service Disruption: {}: {}", alert.source, alert.summary);
+    let title = format!("Alert from {}", alert.source);
 
     // Two columns of key-value labels
     let mut left = vec![
@@ -82,13 +80,13 @@ fn chat_message(alert: &Alert) -> serde_json::Value {
     }
 
     json!({
-        "fallbackText": title,
+        "fallbackText": format!("{title}: {}", alert.summary),
         "cardsV2": [{
             "cardId": "alert",
             "card": {
                 "header": {
                     "title": title,
-                    "subtitle": SUBTITLE,
+                    "subtitle": alert.summary,
                     "imageUrl": ICON_URL,
                     "imageType": "CIRCLE",
                     "imageAltText": "Alert",
