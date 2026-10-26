@@ -18,6 +18,7 @@ use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::{any, get, post};
 use axum::{Extension, Json, Router, middleware};
+use tower_http::compression::CompressionLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 use api::notices::Notices;
@@ -66,6 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest_service("/assets", ServeDir::new("web/dist/assets"))
         .with_state(state)
         .fallback_service(ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html")))
+        .layer(CompressionLayer::new())
         .layer(middleware::from_fn(cache_control))
         .layer(middleware::from_fn(auth::same_origin))
         .layer(middleware::from_fn_with_state(

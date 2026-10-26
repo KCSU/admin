@@ -15,7 +15,7 @@ const PROJECTS: &[&str] = &["kcsu-admin", "kcsu-library-of-things", "kifomasy"];
 /// Logs are kept this long.
 const MAX_HOURS: i64 = 30 * 24;
 /// At most this many entries per response.
-const MAX_ENTRIES: usize = 5000;
+const MAX_ENTRIES: usize = 1000;
 /// The most `entries.list` returns at once.
 const PAGE_SIZE: u32 = 1000;
 
