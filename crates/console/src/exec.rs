@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use ::alerts::AlertPublisher;
 use api::exec::{Exec, Role};
 use axum::extract::State;
 use axum::{Extension, Json};
@@ -10,6 +11,7 @@ use serde::Deserialize;
 use crate::auth::User;
 use crate::documents;
 use crate::error::ErrorResponse;
+use crate::github::Dispatcher;
 
 /// The body of `PUT /api/exec`.
 #[derive(Deserialize)]
@@ -29,6 +31,8 @@ pub async fn get(
 /// `PUT /api/exec`: replaces the exec. Returns the exec as validated and trimmed.
 pub async fn put(
     State(firestore): State<Arc<common::Firestore>>,
+    State(github): State<Arc<Dispatcher>>,
+    State(alerts): State<Arc<AlertPublisher>>,
     Extension(user): Extension<User>,
     Json(update): Json<Update>,
 ) -> Result<Json<Exec>, ErrorResponse> {
@@ -42,5 +46,20 @@ pub async fn put(
     };
     let saved = documents::write(&firestore, current.version.as_deref(), exec).await?;
     eprintln!("{} updated the exec", user.email);
+
+    if let Err(err) = github.dispatch("exec-updated").await {
+        let report = common::report(&err);
+        eprintln!("asking for a site rebuild failed: {report}");
+        let sent = alerts
+            .alert("site-rebuild-failed", "Rebuilding kcsu.org.uk failed")
+            .detail(format!(
+                "asking GitHub to rebuild after an exec change failed: {report}"
+            ))
+            .send()
+            .await;
+        if let Err(alert_err) = sent {
+            eprintln!("sending alert failed: {}", common::report(&alert_err));
+        }
+    }
     Ok(Json(saved.data))
 }

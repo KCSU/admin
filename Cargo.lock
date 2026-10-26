@@ -314,12 +314,15 @@ dependencies = [
 name = "console"
 version = "0.1.0"
 dependencies = [
+ "alerts",
  "api",
  "axum",
  "common",
  "rand 0.9.5",
+ "reqwest",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tower-http",
 ]

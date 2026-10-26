@@ -5,10 +5,12 @@ mod auth;
 mod documents;
 mod error;
 mod exec;
+mod github;
 mod photos;
 
 use std::sync::Arc;
 
+use ::alerts::AlertPublisher;
 use axum::extract::{DefaultBodyLimit, FromRef, Request};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
@@ -20,20 +22,27 @@ use tower_http::services::{ServeDir, ServeFile};
 use api::notices::Notices;
 use auth::{Auth, User};
 use error::{ErrorResponse, error};
+use github::Dispatcher;
 
 #[derive(Clone, FromRef)]
 struct AppState {
     firestore: Arc<common::Firestore>,
     storage: Arc<common::Storage>,
+    github: Arc<Dispatcher>,
+    alerts: Arc<AlertPublisher>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = common::require_env("PORT")?;
     let project = common::require_env("GOOGLE_CLOUD_PROJECT")?;
+    let github_token = common::require_env("GITHUB_DISPATCH_TOKEN")?;
+    let alerts_topic = common::require_env("ALERTS_TOPIC")?;
     let state = AppState {
         firestore: Arc::new(common::Firestore::new(&project)?),
         storage: Arc::new(common::Storage::new()?),
+        github: Arc::new(Dispatcher::new(github_token)?),
+        alerts: Arc::new(AlertPublisher::new(&alerts_topic, "admin/console").await?),
     };
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
 

@@ -85,7 +85,8 @@ jobs:
           --project="$PROJECT" --region="$REGION" --image="$IMAGE"
           --command=/console
           --service-account="$CONSOLE_SA"
-          --set-env-vars=GOOGLE_CLOUD_PROJECT="$PROJECT"
+          --set-secrets=GITHUB_DISPATCH_TOKEN=github-dispatch-token:latest
+          --set-env-vars=ALERTS_TOPIC="$ALERTS_TOPIC",GOOGLE_CLOUD_PROJECT="$PROJECT"
           --no-allow-unauthenticated
 
       # Maximum one instance because of in-memory alert duplication
