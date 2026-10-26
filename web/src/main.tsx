@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Logo from './components/Logo';
 import Alerts from './pages/Alerts';
 import Exec from './pages/Exec';
+import Home from './pages/Home';
 import Status from './pages/Status';
 import { usePath } from './router';
 import './style.css';
@@ -43,7 +44,7 @@ function App() {
 
   return (
     <Layout email={user.email} path={path}>
-      {path === '/exec' ? <Exec /> : path === '/status' ? <Status /> : <Alerts />}
+      {path === '/alerts' ? <Alerts /> : path === '/exec' ? <Exec /> : path === '/status' ? <Status /> : <Home />}
     </Layout>
   );
 }
