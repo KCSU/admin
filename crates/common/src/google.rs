@@ -18,6 +18,8 @@ pub(crate) struct GoogleClient {
     /// For building requests. Send them with [`GoogleClient::send`].
     pub http: reqwest::Client,
     credentials: AccessTokenCredentials,
+    /// Bills requests to this project.
+    quota_project: Option<String>,
 }
 
 impl GoogleClient {
@@ -31,6 +33,7 @@ impl GoogleClient {
             credentials: Builder::default()
                 .build_access_token_credentials()
                 .map_err(SetupError::Credentials)?,
+            quota_project: std::env::var("GOOGLE_CLOUD_QUOTA_PROJECT").ok(),
         })
     }
 
@@ -45,6 +48,10 @@ impl GoogleClient {
             .await
             .map_err(SendError::AccessToken)?
             .token;
+        let request = match &self.quota_project {
+            Some(project) => request.header("x-goog-user-project", project),
+            None => request,
+        };
         request
             .bearer_auth(token)
             .send()

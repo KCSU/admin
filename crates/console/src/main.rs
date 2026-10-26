@@ -6,6 +6,7 @@ mod documents;
 mod error;
 mod exec;
 mod github;
+mod logs;
 mod photos;
 
 use std::sync::Arc;
@@ -28,6 +29,7 @@ use github::Dispatcher;
 struct AppState {
     firestore: Arc<common::Firestore>,
     storage: Arc<common::Storage>,
+    logging: Arc<common::Logging>,
     github: Arc<Dispatcher>,
     alerts: Arc<AlertPublisher>,
 }
@@ -41,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState {
         firestore: Arc::new(common::Firestore::new(&project)?),
         storage: Arc::new(common::Storage::new()?),
+        logging: Arc::new(common::Logging::new()?),
         github: Arc::new(Dispatcher::new(github_token)?),
         alerts: Arc::new(AlertPublisher::new(&alerts_topic, "admin/console").await?),
     };
@@ -49,6 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/api/me", get(me))
         .route("/api/alerts", get(alerts::list))
+        .route("/api/logs", get(logs::list))
         .route("/api/exec", get(exec::get).put(exec::put))
         .route(
             "/api/notices",
