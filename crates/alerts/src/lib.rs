@@ -1,9 +1,9 @@
 //! Critical alerts raised by KCSU services, carried over pub/sub.
 //!
-//! - Producing: a service creates one [`AlertPublisher`] at startup and
-//!   sends each [`Alert`] to the `alerts` topic. See its docs for an example.
-//! - Consuming: the `alerting` binary runs [`consumer::serve`], which receives
-//!   alerts from a push subscription and passes each one to every [`AlertHandler`].
+//! - Producing: a service creates one [`AlertPublisher`] at startup and sends each [`Alert`] to the
+//!   `alerts` topic. See its docs for an example.
+//! - Consuming: the `alerting` binary runs [`consumer::serve`], which receives alerts from a push
+//!   subscription and passes each one to every [`AlertHandler`].
 
 pub mod consumer;
 pub mod dedup;

@@ -42,3 +42,10 @@ pub fn rfc3339(unix: i64) -> Result<String, TimestampOutOfRange> {
         })
         .ok_or(TimestampOutOfRange(unix))
 }
+
+/// The unix timestamp of an RFC 3339 time, e.g. "2026-10-01T14:28:29.123Z", if it is one.
+pub fn parse_rfc3339(text: &str) -> Option<i64> {
+    time::OffsetDateTime::parse(text, &time::format_description::well_known::Rfc3339)
+        .ok()
+        .map(time::OffsetDateTime::unix_timestamp)
+}

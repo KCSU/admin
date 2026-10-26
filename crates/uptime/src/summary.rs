@@ -30,7 +30,8 @@ pub struct SiteStatus {
     pub latest: Option<Check>,
     /// Statistics per UTC day, keyed by date.
     pub days: BTreeMap<Date, Day>,
-    /// [`CLOSE_WINDOW`](crate::state::CLOSE_WINDOW) bits representing the last checks. Bit 0 is the latest.
+    /// [`CLOSE_WINDOW`](crate::state::CLOSE_WINDOW) bits representing the last checks. Bit 0 is
+    /// the latest.
     pub recent_failure_bits: u32,
     /// When the current outage opened. `None` when there is no outage.
     pub outage_since: Option<i64>,

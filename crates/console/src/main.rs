@@ -31,6 +31,7 @@ struct AppState {
     firestore: Arc<common::Firestore>,
     storage: Arc<common::Storage>,
     logging: Arc<common::Logging>,
+    monitoring: Arc<common::Monitoring>,
     github: Arc<Dispatcher>,
     alerts: Arc<AlertPublisher>,
 }
@@ -50,6 +51,7 @@ async fn start() -> Result<(), Box<dyn std::error::Error>> {
         firestore: Arc::new(common::Firestore::new(&project)?),
         storage: Arc::new(common::Storage::new()?),
         logging: Arc::new(common::Logging::new()?),
+        monitoring: Arc::new(common::Monitoring::new()?),
         github: Arc::new(Dispatcher::new(github_token)?),
         alerts: Arc::new(AlertPublisher::new(&alerts_topic, "admin/console").await?),
     };
@@ -59,6 +61,7 @@ async fn start() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/me", get(me))
         .route("/api/alerts", get(alerts::list))
         .route("/api/logs", get(logs::list))
+        .route("/api/logs/volume", get(logs::volume))
         .route("/api/exec", get(exec::get).put(exec::put))
         .route(
             "/api/notices",
