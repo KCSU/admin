@@ -21,6 +21,7 @@ use crate::client::{fetch_access_token, fetch_group, fetch_group_members};
 const GROUP_IDS: &[&str] = &[
     "105777", // kings-sis-ug
     "105776", // kings-sis-pg
+    "101584", // kings-fellows
 ];
 
 /// Fetch each group in `GROUP_IDS` from Lookup, store its snapshot in the
