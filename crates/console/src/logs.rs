@@ -54,12 +54,9 @@ const SEVERITIES: [&str; 9] = [
 ];
 
 const STATUSES: [(&str, Option<u16>); 3] = [
-    ("httpRequest.status=404", Some(404)),
+    ("httpRequest.status>=400 httpRequest.status<500", Some(400)),
     ("httpRequest.status>=500", Some(500)),
-    (
-        "(-httpRequest.status:* OR (httpRequest.status!=404 httpRequest.status<500))",
-        None,
-    ),
+    ("(-httpRequest.status:* OR httpRequest.status<400)", None),
 ];
 
 /// Services are shown as `{prefix}/{short name}`, e.g. `store/api`.
@@ -475,7 +472,7 @@ fn entry(value: &Value) -> Option<Entry> {
 
 fn severity(severity: &str, status: Option<u16>) -> Severity {
     match (severity, status) {
-        (_, Some(404)) => Severity::Info,
+        (_, Some(400..=499)) => Severity::Info,
         (_, Some(500..)) => Severity::Error,
         ("DEBUG", _) => Severity::Debug,
         ("INFO" | "NOTICE", _) => Severity::Info,
