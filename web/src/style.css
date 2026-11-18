@@ -7,6 +7,9 @@
 }
 
 @theme {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
   --radius-control: 6px;
   --radius-surface: 12px;
   --radius-md: var(--radius-control);
@@ -18,7 +21,7 @@
   src: url('./fonts/figtree-latin-400-normal.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Figtree'; font-weight: 600; font-display: swap;
+  font-family: 'Figtree'; font-weight: 500 600; font-display: swap;
   src: url('./fonts/figtree-latin-600-normal.woff2') format('woff2');
 }
 
